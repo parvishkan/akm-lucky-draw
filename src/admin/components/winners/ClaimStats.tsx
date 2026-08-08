@@ -1,0 +1,57 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { ShieldCheck, Clock, CheckCircle2, Star } from 'lucide-react';
+
+interface ClaimStatsProps {
+  total: number;
+  pending: number;
+  fulfilled: number;
+  highValue: number;
+}
+
+export const ClaimStats: React.FC<ClaimStatsProps> = ({
+  total,
+  pending,
+  fulfilled,
+  highValue
+}) => {
+  const cards = [
+    { title: 'Total Claims Generated', count: total, color: 'border-[#FFD700]/30', textColor: 'text-white', icon: ShieldCheck },
+    { title: 'Pending Redemptions', count: pending, color: 'border-amber-500/40', textColor: 'text-amber-400', icon: Clock },
+    { title: 'Fulfilled & Claimed', count: fulfilled, color: 'border-emerald-500/40', textColor: 'text-emerald-400', icon: CheckCircle2 },
+    { title: 'High Value Handovers', count: highValue, color: 'border-[#FFD700]/50', textColor: 'text-[#FFD700]', icon: Star },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 select-none">
+      {cards.map((card, idx) => {
+        const IconComponent = card.icon;
+        return (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.08, duration: 0.5 }}
+            whileHover={{ scale: 1.02 }}
+            className={`bg-[#1D0636]/80 border ${card.color} rounded-2xl p-4 shadow-glass flex flex-col justify-between space-y-2 transition-all`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[#A0A0A0] uppercase tracking-wider">
+                {card.title}
+              </span>
+              <div className="w-7 h-7 rounded-xl bg-[#0D021A] border border-[#FFD700]/20 flex items-center justify-center text-[#FFD700]">
+                <IconComponent className="w-3.5 h-3.5" />
+              </div>
+            </div>
+
+            <span className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${card.textColor}`}>
+              {card.count.toLocaleString()}
+            </span>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default ClaimStats;

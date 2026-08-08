@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg-primary: #05010B;
+  --color-bg-secondary: #0F031E;
+  --color-bg-surface: #1B0633;
+  --color-gold-royal: #FFD700;
+  --color-gold-light: #FFF8DC;
+  --color-gold-dark: #D4AF37;
+  --color-glow-gold: rgba(255, 215, 0, 0.25);
+  
+  --font-serif: 'Cinzel', 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Inter', 'Manrope', system-ui, sans-serif;
+}
+
+@layer base {
+  html, body {
+    height: 100%;
+    background-color: var(--color-bg-primary);
+    color: #FFFFFF;
+    font-family: var(--font-sans);
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  /* Typography Tokens */
+  .font-heading {
+    font-family: var(--font-serif);
+  }
+  
+  .font-body {
+    font-family: var(--font-sans);
+  }
+
+  /* Royal Gold Metallic Text */
+  .text-gold-metallic {
+    background: linear-gradient(135deg, #FFF8DC 0%, #FFD700 35%, #D4AF37 70%, #996515 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 10px rgba(255, 215, 0, 0.3));
+  }
+
+  /* Static Radial Luxury Background Gradient */
+  .bg-luxury-static {
+    background: 
+      radial-gradient(ellipse at 50% 30%, rgba(43, 9, 78, 0.45) 0%, rgba(15, 3, 30, 0.8) 50%, #05010B 100%);
+  }
+
+  /* Static Spot Light Accent */
+  .spotlight-radial {
+    background: radial-gradient(circle at 50% 35%, rgba(255, 215, 0, 0.08) 0%, rgba(255, 215, 0, 0.02) 45%, transparent 70%);
+  }
+
+  /* Luxury Glassmorphic Card Token */
+  .glass-surface {
+    background: linear-gradient(145deg, rgba(27, 6, 51, 0.7) 0%, rgba(15, 3, 30, 0.85) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 248, 220, 0.35);
+  }
+
+  /* Luxury Gold Glow Utilities */
+  .shadow-gold-glow {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.25);
+  }
+
+  .shadow-gold-glow-lg {
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.45);
+  }
+}

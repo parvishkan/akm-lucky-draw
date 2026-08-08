@@ -1,0 +1,23 @@
+{
+  "name": "AKM LUCKY DRAW - Anu Krishna Mall",
+  "short_name": "AKM Lucky Draw",
+  "description": "Exclusive Diwali Lucky Draw Platform for Anu Krishna Mall",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05010B",
+  "theme_color": "#05010B",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/akm-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/akm-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
