@@ -2,50 +2,73 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Tokens: Anyone can read/verify, authenticated staff can create or block
-    match /tokens/{tokenId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if request.auth != null;
+    // Security Helper Function: Checks if request is from an authenticated AND active authorized admin
+    function isAdmin() {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'ACTIVE';
     }
 
-    // Prizes: Public can read active prizes, only authenticated staff can modify
+    // 1. Admin Registry: STRICTLY RESTRICTED to active admins only.
+    // Customers CANNOT create /admins/{customerUID} to elevate their own privileges.
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 2. Tokens: Customers can get a single token by ID to verify receipt.
+    // Bulk listing, token batch generation, blocking, unblocking, and deletion require isAdmin().
+    match /tokens/{tokenId} {
+      allow get: if true;
+      allow list, create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.resource.data.status in ['VERIFIED', 'ASSIGNED', 'CLAIMED']
+      );
+    }
+
+    // 3. Prizes: Public can read active prizes during mystery box selection.
+    // Creating, editing, or deleting prize inventory requires isAdmin().
     match /prizes/{prizeId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Winners & Claims: Public read/create on win, authenticated staff update on claim
+    // 4. Winners: Customers can get a single winner document by ID for claim pass.
+    // Public create requires initial 'PENDING' or 'PENDING_COUNTER' status.
+    // Bulk listing, editing, or deleting winners requires isAdmin().
     match /winners/{winnerId} {
-      allow read, create: if true;
-      allow update, delete: if request.auth != null;
+      allow get: if true;
+      allow create: if request.resource.data.claimStatus in ['PENDING', 'PENDING_COUNTER'] || isAdmin();
+      allow list, update, delete: if isAdmin();
     }
 
+    // 5. Claims: Customers can get a single claim document by Claim ID.
+    // Public create requires initial 'PENDING' or 'PENDING_COUNTER' status.
+    // Public clients CANNOT mark a claim as 'CLAIMED'. Updating claim status (fulfilling counter handover) requires isAdmin().
     match /claims/{claimId} {
-      allow read, create: if true;
-      allow update: if request.auth != null;
+      allow get: if true;
+      allow create: if (
+        request.resource.data.claimStatus in ['PENDING', 'PENDING_COUNTER'] ||
+        request.resource.data.status in ['PENDING', 'PENDING_COUNTER']
+      ) || isAdmin();
+      allow list, update, delete: if isAdmin();
     }
 
-    // Campaigns & Access Control: Public read, admin write
+    // 6. Campaigns & Access Control: Public read (status and customerAccess check), admin write.
     match /campaigns/{campaignId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Admins & Security Audit Logs: Admin protected
-    match /admins/{adminId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
+    // 7. Security Audit Logs: STRICTLY RESTRICTED to active admins only.
+    // Prevents public customers from creating fake/spoofed activity log entries.
     match /activityLogs/{logId} {
-      allow read, create: if true;
-      allow update, delete: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
+    // 8. Settings: Public read (for campaignState), admin write.
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
   }
 }

@@ -18,6 +18,7 @@ import {
   QrCode
 } from 'lucide-react';
 import { APP_CONFIG } from '../constants/appConfig';
+import { AdminAuthService } from '../services/adminAuthService';
 import DashboardHome from './pages/DashboardHome';
 import TokensPage from './pages/TokensPage';
 import PrizesPage from './pages/PrizesPage';
@@ -153,8 +154,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
                   className="absolute right-0 mt-2 w-48 bg-[#1D0636] border border-[#FFD700]/30 rounded-2xl p-2 shadow-2xl z-40 text-xs text-left"
                 >
                   <div className="px-3 py-2 border-b border-[#FFD700]/15">
-                    <span className="font-bold text-[#FFFFFF] block">Anu Krishna Mall</span>
-                    <span className="text-[10px] text-[#A0A0A0]">admin@anukrishnamall.com</span>
+                    <span className="font-bold text-[#FFFFFF] block">{APP_CONFIG.brand.mallName}</span>
+                    <span className="text-[10px] text-[#A0A0A0] truncate block">
+                      {AdminAuthService.getCurrentUser()?.email || 'admin@anukrishnamall.com'}
+                    </span>
                   </div>
                   <button
                     onClick={() => {
