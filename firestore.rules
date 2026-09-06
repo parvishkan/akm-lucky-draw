@@ -16,13 +16,11 @@ service cloud.firestore {
     }
 
     // 2. Tokens: Customers can get a single token by ID to verify receipt.
-    // Bulk listing, token batch generation, blocking, unblocking, and deletion require isAdmin().
+    // Bulk listing, token batch generation, blocking, unblocking, deletion, and updates require isAdmin().
+    // Server-side updates via Vercel API use Firebase Admin SDK (which bypasses rules).
     match /tokens/{tokenId} {
       allow get: if true;
-      allow list, create, delete: if isAdmin();
-      allow update: if isAdmin() || (
-        request.resource.data.status in ['VERIFIED', 'ASSIGNED', 'CLAIMED']
-      );
+      allow list, create, update, delete: if isAdmin();
     }
 
     // 3. Prizes: Public can read active prizes during mystery box selection.
@@ -33,30 +31,28 @@ service cloud.firestore {
     }
 
     // 4. Winners: Customers can get a single winner document by ID for claim pass.
-    // Public create requires initial 'PENDING' or 'PENDING_COUNTER' status.
-    // Bulk listing, editing, or deleting winners requires isAdmin().
+    // Writes are restricted to authorized admins (Admin SDK / Cloud Functions automatically bypass rules).
     match /winners/{winnerId} {
       allow get: if true;
-      allow create: if request.resource.data.claimStatus in ['PENDING', 'PENDING_COUNTER'] || isAdmin();
-      allow list, update, delete: if isAdmin();
+      allow create, list, update, delete: if isAdmin();
     }
 
     // 5. Claims: Customers can get a single claim document by Claim ID.
-    // Public create requires initial 'PENDING' or 'PENDING_COUNTER' status.
-    // Public clients CANNOT mark a claim as 'CLAIMED'. Updating claim status (fulfilling counter handover) requires isAdmin().
+    // Writes are restricted to authorized admins (Admin SDK / Cloud Functions automatically bypass rules).
     match /claims/{claimId} {
       allow get: if true;
-      allow create: if (
-        request.resource.data.claimStatus in ['PENDING', 'PENDING_COUNTER'] ||
-        request.resource.data.status in ['PENDING', 'PENDING_COUNTER']
-      ) || isAdmin();
-      allow list, update, delete: if isAdmin();
+      allow create, list, update, delete: if isAdmin();
     }
 
-    // 6. Campaigns & Access Control: Public read (status and customerAccess check), admin write.
+    // 6. Campaigns & Time Slots: Public read (for campaign status & slot unlock checks), admin write.
     match /campaigns/{campaignId} {
       allow read: if true;
       allow write: if isAdmin();
+
+      match /timeSlots/{slotId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
     }
 
     // 7. Security Audit Logs: STRICTLY RESTRICTED to active admins only.

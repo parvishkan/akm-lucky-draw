@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -9,8 +9,6 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Search,
-  Bell,
   User,
   ChevronDown,
   Menu,
@@ -27,16 +25,36 @@ import ClaimsPage from './pages/ClaimsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import QRManagementPage from './pages/QRManagementPage';
+import { GlobalSearch } from './components/GlobalSearch';
+import { NotificationPanel } from './components/NotificationPanel';
+
+export type AdminTab = 'DASHBOARD' | 'QR_MANAGEMENT' | 'TOKENS' | 'PRIZES' | 'WINNERS' | 'CLAIMS' | 'ANALYTICS' | 'SETTINGS';
 
 interface AdminLayoutProps {
   onLogout: () => void;
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'QR_MANAGEMENT' | 'TOKENS' | 'PRIZES' | 'WINNERS' | 'CLAIMS' | 'ANALYTICS' | 'SETTINGS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<AdminTab>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
+
+  // Sync with window.location.hash for external links / backward compatibility
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#tokens') setActiveTab('TOKENS');
+      else if (hash === '#prizes') setActiveTab('PRIZES');
+      else if (hash === '#winners') setActiveTab('WINNERS');
+      else if (hash === '#claims') setActiveTab('CLAIMS');
+      else if (hash === '#qr' || hash === '#qr_management') setActiveTab('QR_MANAGEMENT');
+      else if (hash === '#analytics') setActiveTab('ANALYTICS');
+      else if (hash === '#settings') setActiveTab('SETTINGS');
+      else if (hash === '#dashboard') setActiveTab('DASHBOARD');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   const menuItems = [
     { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
@@ -52,7 +70,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
   const renderActivePage = () => {
     switch (activeTab) {
       case 'DASHBOARD':
-        return <DashboardHome />;
+        return <DashboardHome onNavigate={setActiveTab} />;
       case 'QR_MANAGEMENT':
         return <QRManagementPage />;
       case 'TOKENS':
@@ -73,7 +91,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0D021A] text-[#FFFFFF] flex flex-col font-sans select-none">
+    <div className="h-screen w-full bg-[#0D021A] text-[#FFFFFF] flex flex-col font-sans select-none overflow-hidden">
       
       {/* 1. TOP NAVIGATION BAR */}
       <header className="h-16 border-b border-[#FFD700]/20 bg-[#1D0636]/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
@@ -104,29 +122,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
 
         {/* Center: Global Search Bar */}
         <div className="hidden md:flex items-center w-72 lg:w-96 relative">
-          <Search className="w-4 h-4 text-[#A0A0A0] absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search tokens, winners, claim IDs, prizes..."
-            className="w-full pl-9 pr-4 py-2 bg-[#0D021A] border border-[#FFD700]/20 rounded-xl text-xs text-[#FFFFFF] placeholder-[#A0A0A0]/60 focus:outline-none focus:border-[#FFD700] transition-colors"
-          />
+          <GlobalSearch onNavigate={setActiveTab} />
         </div>
 
         {/* Right: Notification Bell & Admin Profile Dropdown */}
         <div className="flex items-center gap-3">
           
           {/* Notification Bell */}
-          <button
-            onClick={() => alert('Notifications dropdown: 3 new token verifications logged.')}
-            className="relative p-2 rounded-xl bg-[#0D021A] border border-[#FFD700]/20 text-[#A0A0A0] hover:text-[#FFD700] transition-colors cursor-pointer"
-          >
-            <Bell className="w-4 h-4" />
-            {unreadNotifications > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
-                {unreadNotifications}
-              </span>
-            )}
-          </button>
+          <NotificationPanel onNavigate={setActiveTab} />
 
           {/* User Profile */}
           <div className="relative">

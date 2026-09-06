@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, PlusCircle, Sparkles } from 'lucide-react';
+import { Gift, PlusCircle, RefreshCw } from 'lucide-react';
 import PrizeStats from '../components/prizes/PrizeStats';
 import PrizeToolbar from '../components/prizes/PrizeToolbar';
 import PrizeGrid from '../components/prizes/PrizeGrid';
@@ -10,104 +10,11 @@ import PrizeDetailsPanel from '../components/prizes/PrizeDetailsPanel';
 import DeleteConfirmationModal from '../components/prizes/DeleteConfirmationModal';
 import EmptyState from '../components/prizes/EmptyState';
 import LoadingSkeleton from '../components/prizes/LoadingSkeleton';
-
-// Initial realistic placeholder prizes dataset
-const initialMockPrizes: PrizeItem[] = [
-  {
-    id: 'prize-1',
-    name: 'Grand Gold Coin (24K 1 Gram)',
-    category: 'Grand Prize',
-    image: '/akm-logo.png',
-    totalQuantity: 20,
-    distributedQuantity: 8,
-    remainingQuantity: 12,
-    value: '₹8,500',
-    description: 'Exclusive 24K Pure Gold Diwali Coin redeemable at Anu Krishna Mall Jewelry Section.',
-    priority: 1,
-    status: 'ACTIVE',
-    isHighValue: true,
-    displayOrder: 1
-  },
-  {
-    id: 'prize-2',
-    name: 'Diamond Jewelry Voucher',
-    category: 'Premium Prize',
-    image: '/akm-logo.png',
-    totalQuantity: 15,
-    distributedQuantity: 3,
-    remainingQuantity: 12,
-    value: '₹10,000',
-    description: 'Premium voucher valid on fine diamond & gold ornaments at Anu Krishna Mall.',
-    priority: 2,
-    status: 'ACTIVE',
-    isHighValue: true,
-    displayOrder: 2
-  },
-  {
-    id: 'prize-3',
-    name: 'Designer Silk Saree / Suit Gift',
-    category: 'Regular Gift',
-    image: '/akm-logo.png',
-    totalQuantity: 50,
-    distributedQuantity: 18,
-    remainingQuantity: 32,
-    value: '₹5,000',
-    description: 'Exclusive luxury traditional ethnic attire voucher at AKM Fashion Pavilion.',
-    priority: 3,
-    status: 'ACTIVE',
-    isHighValue: false,
-    displayOrder: 3
-  },
-  {
-    id: 'prize-4',
-    name: 'Smart Home Appliance Gift Box',
-    category: 'Regular Gift',
-    image: '/akm-logo.png',
-    totalQuantity: 30,
-    distributedQuantity: 27,
-    remainingQuantity: 3,
-    value: '₹3,500',
-    description: 'Complimentary premium home appliance voucher redeemable at AKM Digital Hub.',
-    priority: 4,
-    status: 'ACTIVE',
-    isHighValue: false,
-    displayOrder: 4
-  },
-  {
-    id: 'prize-5',
-    name: 'Diwali Shopping Cash Voucher',
-    category: 'Gift Voucher',
-    image: '/akm-logo.png',
-    totalQuantity: 200,
-    distributedQuantity: 72,
-    remainingQuantity: 128,
-    value: '₹1,500',
-    description: 'Instant shopping cash voucher applicable across all Anu Krishna Mall partner stores.',
-    priority: 5,
-    status: 'ACTIVE',
-    isHighValue: false,
-    displayOrder: 5
-  },
-  {
-    id: 'prize-6',
-    name: 'Commemorative Brass Peacock Diya',
-    category: 'Merchandise',
-    image: '/akm-logo.png',
-    totalQuantity: 150,
-    distributedQuantity: 150,
-    remainingQuantity: 0,
-    value: '₹1,200',
-    description: 'Traditional handcrafted brass peacock oil lamp souvenir.',
-    priority: 6,
-    status: 'OUT_OF_STOCK',
-    isHighValue: false,
-    displayOrder: 6
-  }
-];
+import { PrizesService, PrizeDocument } from '../../services/prizesService';
 
 export const PrizesPage: React.FC = () => {
-  const [prizes, setPrizes] = useState<PrizeItem[]>(initialMockPrizes);
-  const [isLoading, setIsLoading] = useState(false);
+  const [prizes, setPrizes] = useState<PrizeItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Modal & Panel Controls
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -123,7 +30,33 @@ export const PrizesPage: React.FC = () => {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState('PRIORITY');
 
-  // Inventory Summary Metrics calculation
+  const loadPrizes = async () => {
+    setIsLoading(true);
+    const docs = await PrizesService.getActivePrizes();
+    const mappedItems: PrizeItem[] = docs.map(d => ({
+      id: d.id,
+      name: d.name || d.title,
+      category: (d.category && ['Grand Prize', 'Premium Prize', 'Regular Gift', 'Gift Voucher', 'Merchandise', 'Other'].includes(d.category) ? d.category : 'Regular Gift') as any,
+      image: '/akm-logo.png',
+      totalQuantity: d.totalQuantity ?? d.quantity ?? 100,
+      distributedQuantity: (d.totalQuantity ?? d.quantity ?? 100) - (d.availableQuantity ?? d.remainingStock ?? 50),
+      remainingQuantity: d.availableQuantity ?? d.remainingStock ?? 50,
+      value: d.value || '₹5,000',
+      description: d.description || '',
+      priority: d.priority || 1,
+      status: (d.availableQuantity <= 0 ? 'OUT_OF_STOCK' : d.status) as any,
+      isHighValue: d.value ? d.value.includes('10,000') || d.value.includes('Gold') || d.value.includes('8,500') : false,
+      displayOrder: d.displayOrder || 1
+    }));
+    setPrizes(mappedItems);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadPrizes();
+  }, []);
+
+  // Inventory Summary Metrics
   const stats = useMemo(() => {
     const totalTypes = prizes.length;
     const totalGifts = prizes.reduce((acc, p) => acc + p.totalQuantity, 0);
@@ -137,25 +70,17 @@ export const PrizesPage: React.FC = () => {
   // Filtered & Sorted Prizes Grid
   const filteredPrizes = useMemo(() => {
     return prizes.filter((item) => {
-      // 1. Search Query
       if (searchTerm.trim()) {
-        const query = searchTerm.trim().toUpperCase();
-        const matchesName = item.name.toUpperCase().includes(query);
-        const matchesCategory = item.category.toUpperCase().includes(query);
-        const matchesStatus = item.status.toUpperCase().includes(query);
+        const queryStr = searchTerm.trim().toUpperCase();
+        const matchesName = item.name.toUpperCase().includes(queryStr);
+        const matchesCategory = item.category.toUpperCase().includes(queryStr);
+        const matchesStatus = item.status.toUpperCase().includes(queryStr);
         if (!matchesName && !matchesCategory && !matchesStatus) return false;
       }
 
-      // 2. Status Filter
       if (selectedStatusFilter !== 'ALL' && item.status !== selectedStatusFilter) return false;
-
-      // 3. Category Filter
       if (selectedCategoryFilter !== 'ALL' && item.category !== selectedCategoryFilter) return false;
-
-      // 4. High Value Only Toggle
       if (showHighValueOnly && !item.isHighValue) return false;
-
-      // 5. Low Stock Only Toggle
       if (showLowStockOnly && !(item.remainingQuantity > 0 && item.remainingQuantity <= 5)) return false;
 
       return true;
@@ -163,8 +88,7 @@ export const PrizesPage: React.FC = () => {
       if (sortBy === 'NAME_ASC') return a.name.localeCompare(b.name);
       if (sortBy === 'QUANTITY_DESC') return b.totalQuantity - a.totalQuantity;
       if (sortBy === 'REMAINING_DESC') return b.remainingQuantity - a.remainingQuantity;
-      if (sortBy === 'DISTRIBUTED_DESC') return b.distributedQuantity - a.distributedQuantity;
-      return a.priority - b.priority; // Default PRIORITY
+      return a.priority - b.priority;
     });
   }, [prizes, searchTerm, selectedStatusFilter, selectedCategoryFilter, showHighValueOnly, showLowStockOnly, sortBy]);
 
@@ -179,51 +103,51 @@ export const PrizesPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleSavePrize = (data: Partial<PrizeItem>) => {
+  const handleSavePrize = async (data: Partial<PrizeItem>) => {
+    setIsLoading(true);
     if (data.id) {
-      // Edit existing prize
-      setPrizes((prev) =>
-        prev.map((p) => {
-          if (p.id === data.id) {
-            const newTotal = data.totalQuantity || p.totalQuantity;
-            const newRemaining = Math.max(0, newTotal - p.distributedQuantity);
-            const newStatus = newRemaining === 0 ? 'OUT_OF_STOCK' : (data.status || p.status);
-            return {
-              ...p,
-              ...data,
-              totalQuantity: newTotal,
-              remainingQuantity: newRemaining,
-              status: newStatus
-            } as PrizeItem;
-          }
-          return p;
-        })
-      );
+      // Update in Firestore
+      await PrizesService.updatePrize(data.id, {
+        name: data.name,
+        title: data.name,
+        totalQuantity: data.totalQuantity,
+        availableQuantity: data.remainingQuantity ?? data.totalQuantity,
+        value: data.value,
+        category: data.category,
+        description: data.description,
+        slotId: data.slotId
+      });
     } else {
-      // Add new prize
-      const newTotal = data.totalQuantity || 10;
-      const newPrize: PrizeItem = {
-        id: `prize-${Date.now()}`,
-        name: data.name || 'New Diwali Gift',
-        category: data.category || 'Regular Gift',
-        image: data.image || '/akm-logo.png',
-        totalQuantity: newTotal,
-        distributedQuantity: 0,
-        remainingQuantity: newTotal,
-        value: data.value || '₹1,000',
-        description: data.description || '',
-        priority: prizes.length + 1,
-        status: data.status || 'ACTIVE',
-        isHighValue: data.isHighValue || false,
-        displayOrder: prizes.length + 1
-      };
-      setPrizes((prev) => [newPrize, ...prev]);
+      // Add in Firestore
+      await PrizesService.addPrize({
+        name: data.name || 'Diwali Gift',
+        title: data.name || 'Diwali Gift',
+        code: `PRZ-${Math.floor(100 + Math.random() * 900)}`,
+        totalQuantity: data.totalQuantity || 50,
+        availableQuantity: data.totalQuantity || 50,
+        value: data.value || '₹2,500',
+        category: data.category || 'Festive Gift',
+        description: data.description || 'Diwali Lucky Draw Prize',
+        slotId: data.slotId
+      });
     }
+
+    setIsFormOpen(false);
+    await loadPrizes();
   };
 
-  const handleConfirmDelete = (prize: PrizeItem) => {
-    setPrizes((prev) => prev.filter((p) => p.id !== prize.id));
-    setPrizeToDelete(null);
+  const handleConfirmDelete = async (prize: PrizeItem) => {
+    try {
+      setIsLoading(true);
+      await PrizesService.deletePrize(prize.id);
+      setPrizes((prev) => prev.filter((p) => p.id !== prize.id));
+      setPrizeToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete prize from Firestore:', err);
+      alert('Failed to delete prize from database. Please check Firestore permissions.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -240,18 +164,28 @@ export const PrizesPage: React.FC = () => {
             Prize Management
           </h1>
           <p className="text-xs text-[#A0A0A0] max-w-xl leading-relaxed">
-            Manage all Lucky Draw gifts, quantities, high-value rewards, and allocation statuses.
+            Manage all Lucky Draw gifts, quantities, high-value rewards, and allocation statuses in Firestore.
           </p>
         </div>
 
         {/* Primary CTA: + Add Prize */}
-        <button
-          onClick={handleOpenAdd}
-          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FFD700] via-[#D4AF37] to-[#FFD700] text-[#0D021A] font-extrabold text-xs tracking-widest uppercase flex items-center gap-2 hover:shadow-[0_0_25px_rgba(255,215,0,0.5)] transition-all cursor-pointer shrink-0"
-        >
-          <PlusCircle className="w-4 h-4 text-[#0D021A]" />
-          <span>+ Add Prize</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={loadPrizes}
+            className="p-3 rounded-2xl bg-[#1D0636] border border-[#FFD700]/30 text-[#FFD700] hover:bg-[#0D021A] transition-colors"
+            title="Refresh Prizes"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={handleOpenAdd}
+            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FFD700] via-[#D4AF37] to-[#FFD700] text-[#0D021A] font-extrabold text-xs tracking-widest uppercase flex items-center gap-2 hover:shadow-[0_0_25px_rgba(255,215,0,0.5)] transition-all cursor-pointer shrink-0"
+          >
+            <PlusCircle className="w-4 h-4 text-[#0D021A]" />
+            <span>+ Add Prize</span>
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -283,7 +217,7 @@ export const PrizesPage: React.FC = () => {
             onSortChange={setSortBy}
           />
 
-          {/* 4. Prize Responsive Grid View / Empty State */}
+          {/* 4. Prize Responsive Grid View */}
           {filteredPrizes.length === 0 ? (
             <EmptyState onAddClick={handleOpenAdd} />
           ) : (

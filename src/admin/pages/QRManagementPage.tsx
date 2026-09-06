@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QrCode, Sparkles } from 'lucide-react';
 import QRCodePreview from '../components/qr/QRCodePreview';
 import PrintPreview from '../components/qr/PrintPreview';
@@ -6,14 +6,27 @@ import CampaignStatus, { CampaignState } from '../components/qr/CampaignStatus';
 import CustomerAccessControl from '../components/qr/CustomerAccessControl';
 import EmergencyControls from '../components/qr/EmergencyControls';
 import CampaignSettings from '../components/qr/CampaignSettings';
+import TimeSlotManager from '../components/qr/TimeSlotManager';
 import QRUsageStats from '../components/qr/QRUsageStats';
 import CampaignActivity from '../components/qr/CampaignActivity';
 import ConfirmationModal from '../components/qr/ConfirmationModal';
+import { CampaignService } from '../../services/campaignService';
 
 export const QRManagementPage: React.FC = () => {
   const [campaignStatus, setCampaignStatus] = useState<CampaignState>('LIVE');
   const [customerAccess, setCustomerAccess] = useState(true);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Subscribe to live Firestore campaign status from /campaigns/akm-diwali-2026
+  useEffect(() => {
+    const unsubscribe = CampaignService.subscribeToCampaignState((state) => {
+      if (state) {
+        setCampaignStatus(state.status as CampaignState);
+        setCustomerAccess(state.customerAccess ?? true);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Status Change Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -32,17 +45,20 @@ export const QRManagementPage: React.FC = () => {
     action: () => {},
   });
 
-  // Handlers for Status Transitions
+  // Handlers for Status Transitions in Firestore
   const handleRequestPause = () => {
     setConfirmModal({
       isOpen: true,
       title: 'Pause Lucky Draw Campaign?',
-      description: 'Customers will temporarily be unable to submit receipt tokens or participate in the draw.',
+      description: 'Customers will temporarily be unable to submit receipt tokens or participate in the draw. This updates the live Firestore campaign state.',
       confirmText: 'Pause Campaign',
       confirmVariant: 'warning',
-      action: () => {
-        setCampaignStatus('PAUSED');
-        setCustomerAccess(false);
+      action: async () => {
+        try {
+          await CampaignService.pauseCampaign();
+        } catch (err) {
+          console.error('Failed to pause campaign in Firestore:', err);
+        }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },
     });
@@ -52,12 +68,15 @@ export const QRManagementPage: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: 'Resume Lucky Draw Campaign?',
-      description: 'Customers will immediately be able to scan QR codes and participate again.',
+      description: 'Customers will immediately be able to scan QR codes and participate again. Campaign status will become LIVE in Firestore.',
       confirmText: 'Resume Campaign',
       confirmVariant: 'primary',
-      action: () => {
-        setCampaignStatus('LIVE');
-        setCustomerAccess(true);
+      action: async () => {
+        try {
+          await CampaignService.resumeCampaign();
+        } catch (err) {
+          console.error('Failed to resume campaign in Firestore:', err);
+        }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },
     });
@@ -67,12 +86,15 @@ export const QRManagementPage: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: 'End Lucky Draw Campaign?',
-      description: 'Once ended, the campaign will be permanently closed to new entries. This action requires administrative confirmation.',
+      description: 'Once ended, the campaign will be permanently closed in Firestore. All token reveals will be suspended. This action requires administrative authorization.',
       confirmText: 'End Campaign',
       confirmVariant: 'danger',
-      action: () => {
-        setCampaignStatus('ENDED');
-        setCustomerAccess(false);
+      action: async () => {
+        try {
+          await CampaignService.endCampaign();
+        } catch (err) {
+          console.error('Failed to end campaign in Firestore:', err);
+        }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },
     });
@@ -82,11 +104,15 @@ export const QRManagementPage: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: 'Disable Customer Access?',
-      description: 'This emergency kill-switch will immediately suspend new Lucky Draw participation across all mobile browsers.',
+      description: 'This emergency kill-switch will immediately suspend new Lucky Draw participation across all mobile browsers in Firestore.',
       confirmText: 'Emergency Disable',
       confirmVariant: 'danger',
-      action: () => {
-        setCustomerAccess(false);
+      action: async () => {
+        try {
+          await CampaignService.setCustomerAccess(false);
+        } catch (err) {
+          console.error('Failed to disable customer access in Firestore:', err);
+        }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },
     });
@@ -106,7 +132,7 @@ export const QRManagementPage: React.FC = () => {
             QR & Campaign Management
           </h1>
           <p className="text-xs text-[#A0A0A0] max-w-xl leading-relaxed">
-            Manage customer access to AKM Lucky Draw, print billing counter QR posters, and switch campaign status.
+            Manage customer access to AKM Lucky Draw, print billing counter QR posters, and switch campaign status in Firestore.
           </p>
         </div>
       </div>
@@ -134,9 +160,12 @@ export const QRManagementPage: React.FC = () => {
 
           <CustomerAccessControl
             accessEnabled={customerAccess}
-            onToggleAccess={() => {
-              if (customerAccess) handleEmergencyDisable();
-              else setCustomerAccess(true);
+            onToggleAccess={async () => {
+              if (customerAccess) {
+                handleEmergencyDisable();
+              } else {
+                await CampaignService.setCustomerAccess(true);
+              }
             }}
           />
 
@@ -148,7 +177,10 @@ export const QRManagementPage: React.FC = () => {
 
       </div>
 
-      {/* 4. Secondary Grid: Campaign Settings & Activity Timeline */}
+      {/* 4. Campaign Time-Slot Manager Section */}
+      <TimeSlotManager />
+
+      {/* 5. Secondary Grid: Campaign Settings & Activity Timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7">
           <CampaignSettings />

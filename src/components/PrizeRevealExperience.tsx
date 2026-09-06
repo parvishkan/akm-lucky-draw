@@ -1,19 +1,19 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Trophy, ArrowRight, Award, Gift } from 'lucide-react';
-import { Prizes } from '../data/prizes';
+import { Prize } from '../data/prizes';
 
 interface PrizeRevealExperienceProps {
   boxId: number;
+  prize: Prize;
   onClaimClick: () => void;
 }
 
 export const PrizeRevealExperience: React.FC<PrizeRevealExperienceProps> = ({
   boxId,
+  prize,
   onClaimClick
 }) => {
-  // Demo prize allocation for reveal screen presentation
-  const wonPrize = Prizes.LIST[0];
 
   // 12 Floating Golden Micro-Particles
   const particles = Array.from({ length: 12 }, (_, i) => ({
@@ -62,7 +62,7 @@ export const PrizeRevealExperience: React.FC<PrizeRevealExperienceProps> = ({
         </div>
 
         <h2 className="font-heading text-2xl sm:text-3xl font-bold text-gold-metallic">
-          You Won {wonPrize.title}!
+          You Won {prize.title}!
         </h2>
 
         <p className="text-xs text-gray-300 font-sans max-w-xs mx-auto leading-relaxed">
@@ -89,15 +89,15 @@ export const PrizeRevealExperience: React.FC<PrizeRevealExperienceProps> = ({
         <div className="space-y-1 text-center">
           <div className="inline-flex items-center gap-1 text-[11px] font-bold text-akm-gold-royal bg-akm-purple-deepest px-3 py-1 rounded-full border border-akm-gold-royal/30 uppercase tracking-wider">
             <Award className="w-3.5 h-3.5 text-akm-gold-royal" />
-            <span>Worth {wonPrize.value}</span>
+            <span>Worth {prize.value}</span>
           </div>
 
           <h3 className="font-heading text-lg font-bold text-white pt-1">
-            {wonPrize.title}
+            {prize.title}
           </h3>
 
           <p className="text-xs text-gray-300 leading-relaxed">
-            {wonPrize.description}
+            {prize.description}
           </p>
         </div>
       </motion.div>

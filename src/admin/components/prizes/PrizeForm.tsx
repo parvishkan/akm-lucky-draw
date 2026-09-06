@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Sparkles, PlusCircle, Star, Check } from 'lucide-react';
+import { X, Sparkles, PlusCircle, Star, Check, Clock } from 'lucide-react';
 import { PrizeItem } from './PrizeCard';
 import PrizeImageUpload from './PrizeImageUpload';
 import { PrizeStatus } from './PrizeStatusBadge';
+import { CampaignService, ACTIVE_CAMPAIGN_ID, TimeSlotData } from '../../../services/campaignService';
 
 interface PrizeFormProps {
   isOpen: boolean;
@@ -28,8 +29,19 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
   const [status, setStatus] = useState<PrizeStatus>('ACTIVE');
   const [isHighValue, setIsHighValue] = useState(false);
   const [displayOrder, setDisplayOrder] = useState(1);
+  const [slotId, setSlotId] = useState('');
+  const [availableSlots, setAvailableSlots] = useState<TimeSlotData[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
   useEffect(() => {
+    if (isOpen) {
+      setIsLoadingSlots(true);
+      CampaignService.getTimeSlots(ACTIVE_CAMPAIGN_ID)
+        .then((slots) => setAvailableSlots(slots))
+        .catch((err) => console.warn('Failed to load slots for PrizeForm:', err))
+        .finally(() => setIsLoadingSlots(false));
+    }
+
     if (prizeToEdit) {
       setName(prizeToEdit.name);
       setCategory(prizeToEdit.category);
@@ -41,6 +53,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
       setStatus(prizeToEdit.status);
       setIsHighValue(prizeToEdit.isHighValue || false);
       setDisplayOrder(prizeToEdit.displayOrder || 1);
+      setSlotId(prizeToEdit.slotId || '');
     } else {
       setName('');
       setCategory('Grand Prize');
@@ -52,6 +65,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
       setStatus('ACTIVE');
       setIsHighValue(false);
       setDisplayOrder(1);
+      setSlotId('');
     }
   }, [prizeToEdit, isOpen]);
 
@@ -72,7 +86,8 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
       priority,
       status,
       isHighValue,
-      displayOrder
+      displayOrder,
+      slotId: slotId.trim() || undefined
     });
     onClose();
   };
@@ -192,6 +207,39 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
               placeholder="Describe prize details, voucher terms, or collection guidelines..."
               className="w-full px-4 py-2.5 bg-[#0D021A] border border-[#FFD700]/30 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#FFD700]"
             />
+          </div>
+
+          {/* Row: Dynamic Campaign Time-Slot Selector */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-[#D4AF37] uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-[#FFD700]" />
+                <span>Assigned Campaign Time-Slot</span>
+              </span>
+              {isLoadingSlots && <span className="text-[10px] text-[#A0A0A0] lowercase font-normal">fetching slots...</span>}
+            </label>
+
+            {availableSlots.length > 0 ? (
+              <select
+                value={slotId}
+                onChange={(e) => setSlotId(e.target.value)}
+                className="w-full px-4 py-2.5 bg-[#0D021A] border border-[#FFD700]/30 rounded-xl text-xs text-white focus:outline-none focus:border-[#FFD700]"
+              >
+                <option value="">🌐 All Campaign Slots (General Pool)</option>
+                {availableSlots.map((s) => (
+                  <option key={s.slotId} value={s.slotId}>
+                    {s.slotId} — Day {s.dayNumber} (Limit: {s.tokenLimit} tokens)
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="p-3 bg-[#0D021A] border border-[#FFD700]/20 rounded-xl text-xs text-[#A0A0A0] flex items-center justify-between">
+                <span>No active time-slots in Firestore. Assigned to global campaign pool.</span>
+                <span className="text-[10px] text-[#D4AF37] font-mono px-2 py-0.5 rounded bg-[#1D0636] border border-[#FFD700]/20">
+                  Global Pool
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Row 4: Status & ⭐ High Value Toggle */}

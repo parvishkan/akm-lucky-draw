@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldCheck, PlusCircle, Download, FileText, Sparkles } from 'lucide-react';
+import { ShieldCheck, Download, FileText, RefreshCw } from 'lucide-react';
 import ClaimStats from '../components/winners/ClaimStats';
 import ClaimTable from '../components/winners/ClaimTable';
 import ClaimVerification from '../components/winners/ClaimVerification';
@@ -10,11 +10,11 @@ import PrintClaimSlip from '../components/winners/PrintClaimSlip';
 import EmptyState from '../components/winners/EmptyState';
 import LoadingSkeleton from '../components/winners/LoadingSkeleton';
 import { WinnerItem } from '../components/winners/WinnerTable';
-import { initialMockWinners } from './WinnersPage';
+import { ClaimsService } from '../../services/claimsService';
 
 export const ClaimsPage: React.FC = () => {
-  const [claims, setClaims] = useState<WinnerItem[]>(initialMockWinners);
-  const [isLoading, setIsLoading] = useState(false);
+  const [claims, setClaims] = useState<WinnerItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Modal State Flow Controls
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
@@ -30,6 +30,31 @@ export const ClaimsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
 
+  const loadClaims = async () => {
+    setIsLoading(true);
+    const records = await ClaimsService.getAllClaims();
+    const mappedItems: WinnerItem[] = records.map(r => ({
+      id: r.winnerId || 'WIN-0000',
+      tokenCode: r.tokenCode || r.tokenId || 'AKM-TOKEN',
+      prizeName: r.prizeName || 'Diwali Gift',
+      prizeCategory: 'Diwali Privilege',
+      prizeImage: '/akm-logo.png',
+      isHighValue: r.prizeValue ? r.prizeValue.includes('10,000') || r.prizeValue.includes('Gold') : false,
+      wonAt: r.createdAt || 'Today',
+      claimStatus: r.claimStatus === 'CLAIMED' ? 'CLAIMED' : 'PENDING',
+      claimId: r.claimId,
+      claimedAt: r.claimedAt || undefined,
+      verifiedBy: r.verifiedBy,
+      staffNotes: r.staffNotes
+    }));
+    setClaims(mappedItems);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadClaims();
+  }, []);
+
   // Summary Metrics
   const stats = useMemo(() => {
     const total = claims.length;
@@ -44,11 +69,11 @@ export const ClaimsPage: React.FC = () => {
   const filteredClaims = useMemo(() => {
     return claims.filter((item) => {
       if (searchTerm.trim()) {
-        const query = searchTerm.trim().toUpperCase();
-        const matchesId = item.claimId.toUpperCase().includes(query);
-        const matchesWinner = item.id.toUpperCase().includes(query);
-        const matchesToken = item.tokenCode.toUpperCase().includes(query);
-        const matchesPrize = item.prizeName.toUpperCase().includes(query);
+        const queryStr = searchTerm.trim().toUpperCase();
+        const matchesId = item.claimId.toUpperCase().includes(queryStr);
+        const matchesWinner = item.id.toUpperCase().includes(queryStr);
+        const matchesToken = item.tokenCode.toUpperCase().includes(queryStr);
+        const matchesPrize = item.prizeName.toUpperCase().includes(queryStr);
         if (!matchesId && !matchesWinner && !matchesToken && !matchesPrize) return false;
       }
 
@@ -70,35 +95,32 @@ export const ClaimsPage: React.FC = () => {
     setConfirmingClaim(claim);
   };
 
-  const handleConfirmCollection = (claim: WinnerItem) => {
-    const updatedTimestamp = '08 Aug 2026, 11:48 AM';
-    const updatedStaff = 'Senior Mall Admin';
+  const handleConfirmCollection = async (claim: WinnerItem) => {
+    setIsLoading(true);
+    const res = await ClaimsService.verifyAndFulfillClaim(claim.claimId, 'Senior Mall Admin', staffNotesText);
+    
+    if (!res.success) {
+      alert(res.message);
+      setIsLoading(false);
+      return;
+    }
 
-    setClaims((prev) =>
-      prev.map((c) => {
-        if (c.claimId === claim.claimId) {
-          return {
-            ...c,
-            claimStatus: 'CLAIMED',
-            claimedAt: updatedTimestamp,
-            verifiedBy: updatedStaff,
-            staffNotes: staffNotesText || c.staffNotes
-          };
-        }
-        return c;
-      })
-    );
+    await loadClaims();
 
     const updatedClaimObject: WinnerItem = {
       ...claim,
       claimStatus: 'CLAIMED',
-      claimedAt: updatedTimestamp,
-      verifiedBy: updatedStaff,
+      claimedAt: new Date().toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      }),
+      verifiedBy: 'Senior Mall Admin',
       staffNotes: staffNotesText || claim.staffNotes
     };
 
     setConfirmingClaim(null);
     setSuccessfulClaim(updatedClaimObject);
+    setIsLoading(false);
   };
 
   const handleExportCSV = () => {
@@ -115,10 +137,6 @@ export const ClaimsPage: React.FC = () => {
     a.click();
   };
 
-  const handleExportPDF = () => {
-    alert(`Exporting ${filteredClaims.length} claim records to PDF format...`);
-  };
-
   return (
     <div className="space-y-8 text-left selection:bg-[#FFD700] selection:text-[#0D021A]">
       
@@ -133,18 +151,28 @@ export const ClaimsPage: React.FC = () => {
             Prize Claims
           </h1>
           <p className="text-xs text-[#A0A0A0] max-w-xl leading-relaxed">
-            Verify customer Claim IDs, authenticate token receipts, and confirm physical prize collection.
+            Verify customer Claim IDs, authenticate token receipts, and confirm physical prize collection in Firestore.
           </p>
         </div>
 
         {/* Primary CTA: Verify Claim */}
-        <button
-          onClick={() => handleOpenVerification()}
-          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FFD700] via-[#D4AF37] to-[#FFD700] text-[#0D021A] font-extrabold text-xs tracking-widest uppercase flex items-center gap-2 hover:shadow-[0_0_25px_rgba(255,215,0,0.5)] transition-all cursor-pointer shrink-0"
-        >
-          <ShieldCheck className="w-4 h-4 text-[#0D021A]" />
-          <span>Verify Claim</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={loadClaims}
+            className="p-3 rounded-2xl bg-[#1D0636] border border-[#FFD700]/30 text-[#FFD700] hover:bg-[#0D021A] transition-colors"
+            title="Refresh Claims"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={() => handleOpenVerification()}
+            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FFD700] via-[#D4AF37] to-[#FFD700] text-[#0D021A] font-extrabold text-xs tracking-widest uppercase flex items-center gap-2 hover:shadow-[0_0_25px_rgba(255,215,0,0.5)] transition-all cursor-pointer shrink-0"
+          >
+            <ShieldCheck className="w-4 h-4 text-[#0D021A]" />
+            <span>Verify Claim</span>
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -179,7 +207,7 @@ export const ClaimsPage: React.FC = () => {
               </button>
 
               <button
-                onClick={handleExportPDF}
+                onClick={() => alert(`Exporting ${filteredClaims.length} claims`)}
                 className="px-3.5 py-2.5 rounded-xl bg-[#0D021A] border border-[#FFD700]/30 text-white font-bold text-xs flex items-center gap-1.5 hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5 text-[#FFD700]" />
@@ -188,7 +216,7 @@ export const ClaimsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Claims Table / Empty State */}
+          {/* 4. Claims Table */}
           {filteredClaims.length === 0 ? (
             <EmptyState type="CLAIMS" />
           ) : (

@@ -12,6 +12,7 @@ export interface TokenVerificationData {
   verifiedAt?: string;
   isValid?: boolean;
   status?: string;
+  slotId?: string;
 }
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -62,4 +63,39 @@ export interface PrizeCertificateProps {
   tokenData: TokenVerificationData;
   prize: Prize;
   onReset: () => void;
+}
+
+export interface CampaignData {
+  id?: string;
+  campaignId?: string;
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  startTime?: string;
+  endTime?: string;
+  timezone?: string;
+  dailyLimit?: number;
+  slotDurationMinutes?: number;
+  cooldownMinutes?: number;
+  status: 'LIVE' | 'PAUSED' | 'ENDED';
+  customerAccess: boolean;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface TimeSlotData {
+  id?: string;
+  slotId: string;
+  campaignId: string;
+  dayNumber: number;
+  date: string;
+  slotStart: any;  // Firestore Timestamp or Date
+  giftUnlock: any; // Firestore Timestamp or Date
+  slotEnd: any;    // Firestore Timestamp or Date
+  tokenLimit: number;
+  status: 'UPCOMING' | 'ACTIVE' | 'ENDED';
+  prizesAllocated?: number;
+  createdAt?: any;
+  updatedAt?: any;
 }

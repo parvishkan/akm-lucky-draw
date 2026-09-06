@@ -44,7 +44,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0D021A] text-white flex flex-col justify-between items-center p-4 sm:p-6 relative overflow-hidden select-none font-sans">
+    <div className="min-h-screen w-full bg-[#0D021A] text-white flex flex-col justify-between items-center p-4 sm:p-6 relative overflow-y-auto select-none font-sans">
       
       {/* Background Atmosphere & Ambient Gold Spotlight */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#FFD700]/10 rounded-full blur-3xl pointer-events-none" />

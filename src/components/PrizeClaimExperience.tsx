@@ -8,16 +8,17 @@ import { APP_CONFIG } from '../constants/appConfig';
 interface PrizeClaimExperienceProps {
   tokenData: TokenVerificationData;
   prize: Prize;
+  claimId: string;
   onClaimConfirmed: () => void;
 }
 
 export const PrizeClaimExperience: React.FC<PrizeClaimExperienceProps> = ({
   tokenData,
   prize,
+  claimId,
   onClaimConfirmed
 }) => {
   const [downloaded, setDownloaded] = useState(false);
-  const claimId = `AKM-CLAIM-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
   const handleDownload = () => {
     setDownloaded(true);

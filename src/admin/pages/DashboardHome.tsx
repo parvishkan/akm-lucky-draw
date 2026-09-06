@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Ticket,
@@ -14,7 +14,6 @@ import {
   Settings,
   Bell,
   ArrowUpRight,
-  ShieldCheck,
   TrendingUp,
   Flame,
   Smartphone,
@@ -24,54 +23,66 @@ import {
   Key
 } from 'lucide-react';
 import { APP_CONFIG } from '../../constants/appConfig';
+import { DashboardService, DashboardMetrics } from '../../services/dashboardService';
 
-export const DashboardHome: React.FC = () => {
+export type DashboardNavTab = 'DASHBOARD' | 'QR_MANAGEMENT' | 'TOKENS' | 'PRIZES' | 'WINNERS' | 'CLAIMS' | 'ANALYTICS' | 'SETTINGS';
+
+interface DashboardHomeProps {
+  onNavigate?: (tab: DashboardNavTab) => void;
+}
+
+export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    totalTokens: 0,
+    verifiedTokens: 0,
+    availableGifts: 0,
+    totalWinners: 0,
+    pendingClaims: 0,
+    claimedGifts: 0
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+
   // Today's Date & Time Display
-  const todayFormatted = 'Thursday, 06 August 2026 • 10:30 AM';
+  const todayFormatted = new Date().toLocaleString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
 
-  // 1. Statistics Cards Data (6 Cards)
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      const data = await DashboardService.getLiveMetrics();
+      setMetrics(data);
+      setIsLoading(false);
+    }
+    loadData();
+  }, []);
+
+  // 1. Statistics Cards Data (6 Cards connected to Firestore)
   const stats = [
-    { id: 'tokens', title: 'Total Tokens', value: '12,840', change: '+14% vs yesterday', isPositive: true, icon: Ticket },
-    { id: 'verified', title: 'Verified Tokens', value: '9,420', change: '73.3% conversion rate', isPositive: true, icon: CheckCircle2 },
-    { id: 'gifts', title: 'Available Gifts', value: '482', change: '84% stock remaining', isPositive: true, icon: Gift },
-    { id: 'winners', title: 'Winners', value: '1,420', change: '100% verified', isPositive: true, icon: Trophy },
-    { id: 'pending', title: 'Pending Claims', value: '38', change: 'Action required', isPositive: false, icon: Package },
-    { id: 'claimed', title: 'Claimed Gifts', value: '1,382', change: '97.3% fulfillment rate', isPositive: true, icon: Sparkles },
+    { id: 'tokens', title: 'Total Tokens', value: metrics.totalTokens.toLocaleString(), change: 'Live Firestore Count', isPositive: true, icon: Ticket },
+    { id: 'verified', title: 'Verified Tokens', value: metrics.verifiedTokens.toLocaleString(), change: metrics.totalTokens > 0 ? `${((metrics.verifiedTokens / metrics.totalTokens) * 100).toFixed(1)}% conversion` : '0% conversion', isPositive: true, icon: CheckCircle2 },
+    { id: 'gifts', title: 'Available Gifts', value: metrics.availableGifts.toLocaleString(), change: 'Realtime Stock', isPositive: true, icon: Gift },
+    { id: 'winners', title: 'Winners', value: metrics.totalWinners.toLocaleString(), change: '100% verified', isPositive: true, icon: Trophy },
+    { id: 'pending', title: 'Pending Claims', value: metrics.pendingClaims.toLocaleString(), change: 'Counter action required', isPositive: false, icon: Package },
+    { id: 'claimed', title: 'Claimed Gifts', value: metrics.claimedGifts.toLocaleString(), change: 'Fulfilled at counter', isPositive: true, icon: Sparkles },
   ];
 
-  // 2. Quick Actions Cards Data (6 Cards)
+  // 2. Quick Actions Cards Data
   const quickActions = [
-    { id: 'gen-tokens', title: 'Generate Tokens', desc: 'Create new batch of receipt codes', icon: PlusCircle, action: () => alert('Quick Action: Open Token Generator') },
-    { id: 'add-prize', title: 'Add Prize', desc: 'Add new gift to campaign pool', icon: Gift, action: () => alert('Quick Action: Open Add Prize Modal') },
-    { id: 'view-winners', title: 'View Winners', desc: 'Inspect verified winner registry', icon: Trophy, action: () => alert('Quick Action: View Winners') },
-    { id: 'qr-mgmt', title: 'QR Management', desc: 'Customize & export campaign QR', icon: QrCode, action: () => alert('Quick Action: Open QR Console') },
-    { id: 'view-analytics', title: 'View Analytics', desc: 'Realtime visitor & conversion data', icon: BarChart3, action: () => alert('Quick Action: Open Analytics') },
-    { id: 'settings', title: 'Campaign Settings', desc: 'Adjust parameters & staff permissions', icon: Settings, action: () => alert('Quick Action: Open Settings') },
+    { id: 'gen-tokens', title: 'Generate Tokens', desc: 'Create new batch of receipt codes', icon: PlusCircle, action: () => onNavigate ? onNavigate('TOKENS') : (window.location.hash = '#tokens') },
+    { id: 'add-prize', title: 'Add Prize', desc: 'Add new gift to campaign pool', icon: Gift, action: () => onNavigate ? onNavigate('PRIZES') : (window.location.hash = '#prizes') },
+    { id: 'view-winners', title: 'View Winners', desc: 'Inspect verified winner registry', icon: Trophy, action: () => onNavigate ? onNavigate('WINNERS') : (window.location.hash = '#winners') },
+    { id: 'qr-mgmt', title: 'QR Management', desc: 'Customize & export campaign QR', icon: QrCode, action: () => onNavigate ? onNavigate('QR_MANAGEMENT') : (window.location.hash = '#qr') },
+    { id: 'view-analytics', title: 'View Analytics', desc: 'Realtime visitor & conversion data', icon: BarChart3, action: () => onNavigate ? onNavigate('ANALYTICS') : (window.location.hash = '#analytics') },
+    { id: 'settings', title: 'Campaign Settings', desc: 'Adjust parameters & staff permissions', icon: Settings, action: () => onNavigate ? onNavigate('SETTINGS') : (window.location.hash = '#settings') },
   ];
 
   // 3. Recent Activity Timeline Data
   const recentActivities = [
-    { time: '09:10 AM', title: 'Token Verified', desc: 'Token AKM-9410 authenticated via mobile web', badge: 'Verified' },
-    { time: '09:15 AM', title: 'Prize Claimed', desc: 'Grand Gold Coin fulfilled at Help Desk Counter #1', badge: 'Fulfilled' },
-    { time: '09:20 AM', title: 'New Prize Added', desc: 'Added 5x Diamond Jewelry Vouchers to active pool', badge: 'Stock Update' },
-    { time: '09:35 AM', title: 'Admin Logged In', desc: 'Mall Manager signed into Admin Portal console', badge: 'Security' },
-  ];
-
-  // 4. Top Winning Prizes Data
-  const topPrizes = [
-    { name: 'iPhone 16 Pro Max', category: 'Grand Prize', value: '₹1,39,900', icon: Smartphone },
-    { name: 'Apple Watch Series 10', category: 'Luxury Tech', value: '₹46,900', icon: Watch },
-    { name: 'AirPods Pro 2', category: 'Audio Privilege', value: '₹24,900', icon: Headphones },
-    { name: '₹10,000 Diamond Voucher', category: 'Jewelry Voucher', value: '₹10,000', icon: Award },
-    { name: 'Gold Commemorative Keychain', category: 'Diwali Special', value: '₹4,500', icon: Key },
-  ];
-
-  // 5. Notifications Data
-  const notifications = [
-    { title: 'Diwali Campaign Started', desc: 'Official Lucky Draw went live across all mall floors.', time: '08:00 AM', tag: 'System' },
-    { title: 'Prize Stock Low', desc: 'Grand Gold Coins down to last 12 units in main vault.', time: '08:45 AM', tag: 'Inventory' },
-    { title: 'Pending Claims Alert', desc: '38 winner claims waiting for counter fulfillment.', time: '09:05 AM', tag: 'Claims' },
-    { title: 'System Security Update', desc: 'Firestore security rules active & encrypted.', time: '09:30 AM', tag: 'Security' },
+    { time: 'Just Now', title: 'System Active', desc: 'AKM Lucky Draw connected to live Firestore database.', badge: 'Live Database' },
+    { time: 'Today', title: 'Firestore Security', desc: 'Hardened role-based rules active for /admins, /tokens, /prizes.', badge: 'Security' }
   ];
 
   return (
@@ -91,11 +102,11 @@ export const DashboardHome: React.FC = () => {
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold text-[#FFFFFF] font-sans">
-            Good Morning, Admin 👋
+            Good Day, Admin 👋
           </h1>
 
           <p className="text-xs text-[#A0A0A0]">
-            Welcome back to AKM Lucky Draw Dashboard. Here is your live campaign overview.
+            Welcome back to AKM Lucky Draw Dashboard. Here is your live campaign overview from Firestore.
           </p>
         </div>
 
@@ -106,10 +117,10 @@ export const DashboardHome: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* 2. STATISTICS CARDS GRID (6 Responsive Cards) */}
+      {/* 2. STATISTICS CARDS GRID */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-[#D4AF37] uppercase tracking-widest block">
-          Campaign Metrics & Performance
+          Live Campaign Metrics & Performance
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -135,7 +146,7 @@ export const DashboardHome: React.FC = () => {
 
                 <div>
                   <span className="text-2xl font-bold text-[#FFFFFF] font-mono tracking-tight block">
-                    {stat.value}
+                    {isLoading ? '...' : stat.value}
                   </span>
                   <span className="text-[10px] text-[#D4AF37] font-semibold flex items-center gap-1 mt-1">
                     <TrendingUp className="w-3 h-3 text-emerald-400" />
@@ -148,7 +159,7 @@ export const DashboardHome: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. QUICK ACTIONS SECTION (6 Responsive Action Cards) */}
+      {/* 3. QUICK ACTIONS SECTION */}
       <div className="space-y-3 pt-2">
         <h3 className="text-xs font-bold text-[#D4AF37] uppercase tracking-widest block">
           Quick Actions Shortcuts
@@ -192,14 +203,14 @@ export const DashboardHome: React.FC = () => {
       {/* 4. MAIN GRID: RECENT ACTIVITY & LIVE CAMPAIGN STATUS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
         
-        {/* RECENT ACTIVITY TIMELINE (8 Cols) */}
+        {/* RECENT ACTIVITY TIMELINE */}
         <div className="lg:col-span-8 bg-[#1D0636]/80 border border-[#FFD700]/25 rounded-3xl p-6 space-y-5 shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
           <div className="flex items-center justify-between border-b border-[#FFD700]/15 pb-3">
             <h3 className="text-base font-bold text-[#FFFFFF] font-sans flex items-center gap-2">
               <Clock className="w-4 h-4 text-[#FFD700]" />
-              <span>Recent Activity Stream</span>
+              <span>Recent System Activity</span>
             </h3>
-            <span className="text-xs text-[#D4AF37] font-mono">Live Timeline</span>
+            <span className="text-xs text-[#D4AF37] font-mono">Firestore Connected</span>
           </div>
 
           <div className="space-y-3">
@@ -226,7 +237,7 @@ export const DashboardHome: React.FC = () => {
           </div>
         </div>
 
-        {/* LIVE CAMPAIGN STATUS CARD (4 Cols) */}
+        {/* LIVE CAMPAIGN STATUS CARD */}
         <div className="lg:col-span-4 bg-[#1D0636]/80 border border-[#FFD700]/25 rounded-3xl p-6 space-y-5 shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
           <div className="flex items-center justify-between border-b border-[#FFD700]/15 pb-3">
             <h3 className="text-base font-bold text-[#FFFFFF] font-sans flex items-center gap-2">
@@ -246,82 +257,20 @@ export const DashboardHome: React.FC = () => {
             </div>
 
             <div className="p-3 rounded-2xl bg-[#0D021A] border border-[#FFD700]/20 space-y-1">
-              <span className="text-[10px] text-[#A0A0A0] uppercase block font-semibold">Campaign Period</span>
-              <span className="font-bold text-white block">01 Oct 2026 – 15 Nov 2026</span>
+              <span className="text-[10px] text-[#A0A0A0] uppercase block font-semibold">Campaign Database</span>
+              <span className="font-bold text-white block">Firestore (akm-lucky-draw)</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-2xl bg-[#0D021A] border border-[#FFD700]/20 space-y-1">
-                <span className="text-[10px] text-[#A0A0A0] uppercase block font-semibold">Gifts Remaining</span>
-                <span className="font-mono text-base font-bold text-[#FFFFFF] block">482 Gifts</span>
+                <span className="text-[10px] text-[#A0A0A0] uppercase block font-semibold">Gifts Available</span>
+                <span className="font-mono text-base font-bold text-[#FFFFFF] block">{isLoading ? '...' : metrics.availableGifts} Gifts</span>
               </div>
               <div className="p-3 rounded-2xl bg-[#0D021A] border border-[#FFD700]/20 space-y-1">
-                <span className="text-[10px] text-[#A0A0A0] uppercase block font-semibold">High Value Units</span>
-                <span className="font-mono text-base font-bold text-[#FFD700] block">12 Units</span>
+                <span className="text-[10px] text-[#A0A0A0] uppercase block font-semibold">Pending Claims</span>
+                <span className="font-mono text-base font-bold text-[#FFD700] block">{isLoading ? '...' : metrics.pendingClaims} Claims</span>
               </div>
             </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* 5. SECONDARY GRID: TOP WINNING PRIZES & NOTIFICATIONS PANEL */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-        
-        {/* TOP WINNING PRIZES (8 Cols) */}
-        <div className="lg:col-span-8 bg-[#1D0636]/80 border border-[#FFD700]/25 rounded-3xl p-6 space-y-5 shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center justify-between border-b border-[#FFD700]/15 pb-3">
-            <h3 className="text-base font-bold text-[#FFFFFF] font-sans flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-[#FFD700]" />
-              <span>Top Winning Prizes Showcase</span>
-            </h3>
-            <span className="text-xs text-[#D4AF37] font-mono">Diwali Pool</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {topPrizes.map((prize, idx) => {
-              const IconComponent = prize.icon;
-              return (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-2xl bg-[#0D021A] border border-[#FFD700]/20 hover:border-[#FFD700]/50 transition-all flex items-center gap-3"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#1D0636] border border-[#FFD700]/30 flex items-center justify-center text-[#FFD700] shrink-0">
-                    <IconComponent className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-0.5 overflow-hidden">
-                    <span className="font-bold text-xs text-[#FFFFFF] truncate block">{prize.name}</span>
-                    <span className="text-[10px] text-[#D4AF37] block font-mono">{prize.value} • {prize.category}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* NOTIFICATIONS PANEL (4 Cols) */}
-        <div className="lg:col-span-4 bg-[#1D0636]/80 border border-[#FFD700]/25 rounded-3xl p-6 space-y-5 shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center justify-between border-b border-[#FFD700]/15 pb-3">
-            <h3 className="text-base font-bold text-[#FFFFFF] font-sans flex items-center gap-2">
-              <Bell className="w-4 h-4 text-[#FFD700]" />
-              <span>System Notifications</span>
-            </h3>
-            <span className="text-xs text-rose-400 font-mono font-bold">4 Alerts</span>
-          </div>
-
-          <div className="space-y-3">
-            {notifications.map((note, idx) => (
-              <div
-                key={idx}
-                className="p-3 rounded-2xl bg-[#0D021A] border border-[#FFD700]/15 space-y-1 hover:border-[#FFD700]/40 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-[#FFFFFF]">{note.title}</span>
-                  <span className="text-[9px] font-mono text-[#D4AF37]">{note.time}</span>
-                </div>
-                <p className="text-[11px] text-[#A0A0A0] leading-tight">{note.desc}</p>
-              </div>
-            ))}
           </div>
         </div>
 

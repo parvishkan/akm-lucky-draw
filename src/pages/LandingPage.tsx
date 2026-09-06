@@ -19,6 +19,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
   const [verifiedTokenData, setVerifiedTokenData] = useState<TokenVerificationData | null>(null);
   const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
   const [wonPrize, setWonPrize] = useState<Prize | null>(null);
+  const [claimId, setClaimId] = useState<string>('');
   const [isZooming, setIsZooming] = useState(false);
   const [campaignState, setCampaignState] = useState<CampaignData>({
     name: 'AKM LUCKY DRAW',
@@ -80,6 +81,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
   const handleBoxSelected = (boxId: number, prize: Prize, claimId: string) => {
     setSelectedBoxId(boxId);
     setWonPrize(prize);
+    setClaimId(claimId);
     setViewState('BOX_OPENING_CINEMATIC');
   };
 
@@ -257,6 +259,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
           >
             <MysteryBoxExperience
               tokenCode={verifiedTokenData.tokenCode}
+              slotId={verifiedTokenData.slotId}
               onBoxSelected={handleBoxSelected}
             />
           </motion.div>
@@ -272,7 +275,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
         )}
 
         {/* VIEW 6: Premium Prize Reveal Screen */}
-        {viewState === 'PRIZE_REVEAL' && selectedBoxId && (
+        {viewState === 'PRIZE_REVEAL' && selectedBoxId && wonPrize && (
           <motion.div
             key="prize-reveal-screen"
             initial={{ opacity: 0 }}
@@ -283,6 +286,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
           >
             <PrizeRevealExperience
               boxId={selectedBoxId}
+              prize={wonPrize}
               onClaimClick={handleClaimClick}
             />
           </motion.div>
@@ -301,6 +305,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
             <PrizeClaimExperience
               tokenData={verifiedTokenData}
               prize={wonPrize}
+              claimId={claimId}
               onClaimConfirmed={handleClaimConfirmed}
             />
           </motion.div>
@@ -340,7 +345,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
                   Verified Gift Claim ID
                 </span>
                 <span className="font-mono text-base font-bold text-akm-gold-royal tracking-wider block">
-                  AKM-CLAIM-2026-8892
+                  {claimId || 'AKM-CLAIM-2026-8892'}
                 </span>
               </div>
 

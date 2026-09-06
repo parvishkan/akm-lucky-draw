@@ -1,96 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Sparkles } from 'lucide-react';
+import { Trophy, RefreshCw } from 'lucide-react';
 import WinnerStats from '../components/winners/WinnerStats';
 import WinnerToolbar from '../components/winners/WinnerToolbar';
 import WinnerTable, { WinnerItem } from '../components/winners/WinnerTable';
 import WinnerDetailsPanel from '../components/winners/WinnerDetailsPanel';
 import EmptyState from '../components/winners/EmptyState';
 import LoadingSkeleton from '../components/winners/LoadingSkeleton';
-
-// Realistic mock winners dataset
-export const initialMockWinners: WinnerItem[] = [
-  {
-    id: 'WIN-000428',
-    tokenCode: 'AKM-DW-26-X8K4P',
-    prizeName: 'iPhone 16 Pro Max',
-    prizeCategory: 'Grand Prize',
-    prizeImage: '/akm-logo.png',
-    isHighValue: true,
-    wonAt: '08 Aug 2026, 11:32 AM',
-    claimStatus: 'PENDING',
-    claimId: 'CLM-8F42K',
-    staffNotes: 'Customer verified at Help Desk Counter #1.'
-  },
-  {
-    id: 'WIN-000427',
-    tokenCode: 'AKM-DW-26-A7L9Q',
-    prizeName: 'Grand Gold Coin (24K)',
-    prizeCategory: 'Grand Prize',
-    prizeImage: '/akm-logo.png',
-    isHighValue: true,
-    wonAt: '08 Aug 2026, 10:45 AM',
-    claimStatus: 'CLAIMED',
-    claimId: 'CLM-9M24P',
-    claimedAt: '08 Aug 2026, 11:00 AM',
-    verifiedBy: 'Senior Mall Admin',
-    staffNotes: 'Handed 1g Gold Coin in velvet box.'
-  },
-  {
-    id: 'WIN-000426',
-    tokenCode: 'AKM-DW-26-M4D8X',
-    prizeName: 'Smart Watch Series 10',
-    prizeCategory: 'Premium Prize',
-    prizeImage: '/akm-logo.png',
-    isHighValue: true,
-    wonAt: '08 Aug 2026, 10:15 AM',
-    claimStatus: 'CLAIMED',
-    claimId: 'CLM-3R88K',
-    claimedAt: '08 Aug 2026, 10:30 AM',
-    verifiedBy: 'Mall Manager'
-  },
-  {
-    id: 'WIN-000425',
-    tokenCode: 'AKM-DW-26-G8N4C',
-    prizeName: 'Designer Silk Saree',
-    prizeCategory: 'Regular Gift',
-    prizeImage: '/akm-logo.png',
-    isHighValue: false,
-    wonAt: '07 Aug 2026, 04:20 PM',
-    claimStatus: 'CLAIMED',
-    claimId: 'CLM-7T12X',
-    claimedAt: '07 Aug 2026, 04:40 PM',
-    verifiedBy: 'Staff Counter #2'
-  },
-  {
-    id: 'WIN-000424',
-    tokenCode: 'AKM-DW-26-T2Y9H',
-    prizeName: '₹10,000 Diamond Voucher',
-    prizeCategory: 'Premium Prize',
-    prizeImage: '/akm-logo.png',
-    isHighValue: true,
-    wonAt: '07 Aug 2026, 03:10 PM',
-    claimStatus: 'PENDING',
-    claimId: 'CLM-5K99B'
-  },
-  {
-    id: 'WIN-000423',
-    tokenCode: 'AKM-DW-26-Z7P3X',
-    prizeName: 'Diwali Cash Voucher',
-    prizeCategory: 'Gift Voucher',
-    prizeImage: '/akm-logo.png',
-    isHighValue: false,
-    wonAt: '06 Aug 2026, 05:00 PM',
-    claimStatus: 'CLAIMED',
-    claimId: 'CLM-1Z44W',
-    claimedAt: '06 Aug 2026, 05:15 PM',
-    verifiedBy: 'Senior Mall Admin'
-  }
-];
+import { db, collections } from '../../services/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
 export const WinnersPage: React.FC = () => {
-  const [winners, setWinners] = useState<WinnerItem[]>(initialMockWinners);
-  const [isLoading, setIsLoading] = useState(false);
+  const [winners, setWinners] = useState<WinnerItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedWinner, setSelectedWinner] = useState<WinnerItem | null>(null);
 
   // Search & Filter State
@@ -100,10 +22,47 @@ export const WinnersPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState('ALL');
   const [sortBy, setSortBy] = useState('NEWEST');
 
+  const loadWinners = async () => {
+    setIsLoading(true);
+    try {
+      const snap = await getDocs(collection(db, collections.WINNERS));
+      if (!snap.empty) {
+        const items: WinnerItem[] = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: data.winnerId || d.id,
+            tokenCode: data.tokenCode || data.tokenId || 'AKM-TOKEN',
+            prizeName: data.prizeName || 'Diwali Gift',
+            prizeCategory: data.prizeCategory || 'Diwali Privilege',
+            prizeImage: '/akm-logo.png',
+            isHighValue: data.prizeValue ? data.prizeValue.includes('10,000') || data.prizeValue.includes('Gold') || data.prizeValue.includes('iPhone') : false,
+            wonAt: data.wonAt || 'Today',
+            claimStatus: (data.claimStatus === 'CLAIMED' || data.status === 'CLAIMED') ? 'CLAIMED' : 'PENDING',
+            claimId: data.claimId || `CLM-${d.id.substring(0, 5)}`,
+            claimedAt: data.claimedAt,
+            verifiedBy: data.verifiedBy,
+            staffNotes: data.staffNotes
+          };
+        });
+        setWinners(items);
+      } else {
+        setWinners([]);
+      }
+    } catch (err) {
+      console.warn('Firestore loadWinners error:', err);
+      setWinners([]);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadWinners();
+  }, []);
+
   // Summary Metrics
   const stats = useMemo(() => {
     const total = winners.length;
-    const today = winners.filter((w) => w.wonAt.includes('08 Aug')).length;
+    const today = winners.filter((w) => w.wonAt.includes('2026') || w.wonAt.includes('Today')).length;
     const pending = winners.filter((w) => w.claimStatus === 'PENDING').length;
     const claimed = winners.filter((w) => w.claimStatus === 'CLAIMED').length;
     const highValue = winners.filter((w) => w.isHighValue).length;
@@ -114,33 +73,24 @@ export const WinnersPage: React.FC = () => {
   // Filtered & Sorted Winners
   const filteredWinners = useMemo(() => {
     return winners.filter((item) => {
-      // 1. Search Query
       if (searchTerm.trim()) {
-        const query = searchTerm.trim().toUpperCase();
-        const matchesId = item.id.toUpperCase().includes(query);
-        const matchesToken = item.tokenCode.toUpperCase().includes(query);
-        const matchesClaim = item.claimId.toUpperCase().includes(query);
-        const matchesPrize = item.prizeName.toUpperCase().includes(query);
+        const queryStr = searchTerm.trim().toUpperCase();
+        const matchesId = item.id.toUpperCase().includes(queryStr);
+        const matchesToken = item.tokenCode.toUpperCase().includes(queryStr);
+        const matchesClaim = item.claimId.toUpperCase().includes(queryStr);
+        const matchesPrize = item.prizeName.toUpperCase().includes(queryStr);
         if (!matchesId && !matchesToken && !matchesClaim && !matchesPrize) return false;
       }
 
-      // 2. Status Filter
       if (selectedStatus !== 'ALL' && item.claimStatus !== selectedStatus) return false;
-
-      // 3. Category Filter
-      if (selectedCategory !== 'ALL' && item.prizeCategory !== selectedCategory) return false;
-
-      // 4. Date Filter
-      if (selectedDate === 'TODAY' && !item.wonAt.includes('08 Aug')) return false;
 
       return true;
     }).sort((a, b) => {
       if (sortBy === 'OLDEST') return a.id.localeCompare(b.id);
       if (sortBy === 'PRIZE') return a.prizeName.localeCompare(b.prizeName);
-      if (sortBy === 'STATUS') return a.claimStatus.localeCompare(b.claimStatus);
-      return b.id.localeCompare(a.id); // Default NEWEST
+      return b.id.localeCompare(a.id);
     });
-  }, [winners, searchTerm, selectedStatus, selectedCategory, selectedDate, sortBy]);
+  }, [winners, searchTerm, selectedStatus, sortBy]);
 
   // CSV Export logic
   const handleExportCSV = () => {
@@ -157,10 +107,6 @@ export const WinnersPage: React.FC = () => {
     a.click();
   };
 
-  const handleExportPDF = () => {
-    alert(`Exporting ${filteredWinners.length} winner records to PDF format...`);
-  };
-
   return (
     <div className="space-y-8 text-left selection:bg-[#FFD700] selection:text-[#0D021A]">
       
@@ -175,9 +121,17 @@ export const WinnersPage: React.FC = () => {
             Winners
           </h1>
           <p className="text-xs text-[#A0A0A0] max-w-xl leading-relaxed">
-            Manage all AKM Lucky Draw winners, tokens, claim IDs, and prize collection statuses.
+            Manage all AKM Lucky Draw winners, tokens, claim IDs, and prize collection statuses in Firestore.
           </p>
         </div>
+
+        <button
+          onClick={loadWinners}
+          className="p-3 rounded-2xl bg-[#1D0636] border border-[#FFD700]/30 text-[#FFD700] hover:bg-[#0D021A] transition-colors self-start sm:self-auto"
+          title="Refresh Winners"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {isLoading ? (
@@ -206,10 +160,10 @@ export const WinnersPage: React.FC = () => {
             sortBy={sortBy}
             onSortChange={setSortBy}
             onExportCSV={handleExportCSV}
-            onExportPDF={handleExportPDF}
+            onExportPDF={() => alert(`Exporting ${filteredWinners.length} winners`)}
           />
 
-          {/* 4. Winners Data Table / Mobile Cards / Empty State */}
+          {/* 4. Winners Data Table */}
           {filteredWinners.length === 0 ? (
             <EmptyState type="WINNERS" />
           ) : (

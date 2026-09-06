@@ -18,6 +18,7 @@ export interface PrizeItem {
   status: PrizeStatus;
   isHighValue: boolean;
   displayOrder: number;
+  slotId?: string;
 }
 
 interface PrizeCardProps {
