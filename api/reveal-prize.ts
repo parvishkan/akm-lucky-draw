@@ -1,32 +1,33 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import admin from 'firebase-admin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin SDK cleanly on server using environment variables
-if (!admin.apps.length) {
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'akm-lucky-draw';
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY
-    ? process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, '\n')
-    : undefined;
+function getDb() {
+  if (!getApps().length) {
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'akm-lucky-draw';
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY
+      ? process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, '\n')
+      : undefined;
 
-  if (clientEmail && privateKey) {
-    const certFn = ((admin as any).credential && (admin as any).credential.cert) ? (admin as any).credential.cert : (admin as any).cert;
-    admin.initializeApp({
-      credential: certFn({
-        projectId,
-        clientEmail,
-        privateKey
-      })
-    });
-  } else {
-    // Default application credentials / environment fallback
-    admin.initializeApp({
-      projectId
-    });
+    if (clientEmail && privateKey) {
+      initializeApp({
+        credential: cert({
+          projectId,
+          clientEmail,
+          privateKey
+        })
+      });
+    } else {
+      // Default application credentials / environment fallback
+      initializeApp({
+        projectId
+      });
+    }
   }
+  return getFirestore();
 }
-
-const db = admin.firestore();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS & Method Check
@@ -47,6 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const db = getDb();
     const { tokenCode: rawCode } = req.body || {};
     const tokenCode = rawCode ? String(rawCode).trim().toUpperCase() : '';
 
@@ -130,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const selectedPrizeRef = db.collection('prizes').doc(selectedPrize.id);
 
       // 5. ATOMIC WRITES
-      const nowTimestamp = admin.firestore.FieldValue.serverTimestamp();
+      const nowTimestamp = FieldValue.serverTimestamp();
       const winnerId = `WIN-${Math.floor(100000 + Math.random() * 900000)}`;
       const claimId = `CLM-${Math.floor(10000 + Math.random() * 90000)}`;
 
