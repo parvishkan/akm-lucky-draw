@@ -38,7 +38,8 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
     availableGifts: 0,
     totalWinners: 0,
     pendingClaims: 0,
-    claimedGifts: 0
+    claimedGifts: 0,
+    demoTestsRun: 0
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -119,9 +120,16 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
 
       {/* 2. STATISTICS CARDS GRID */}
       <div className="space-y-3">
-        <h3 className="text-xs font-bold text-[#D4AF37] uppercase tracking-widest block">
-          Live Campaign Metrics & Performance
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-[#D4AF37] uppercase tracking-widest block">
+            Live Campaign Metrics & Performance
+          </h3>
+          {metrics.demoTestsRun > 0 && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-fuchsia-950/80 border border-fuchsia-400/40 text-fuchsia-300 text-xs font-mono font-medium">
+              <span>🧪 Demo Tests Run: {metrics.demoTestsRun}</span>
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {stats.map((stat, index) => {

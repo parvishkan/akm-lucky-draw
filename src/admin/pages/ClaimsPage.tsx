@@ -29,6 +29,7 @@ export const ClaimsPage: React.FC = () => {
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [dataScope, setDataScope] = useState<'ALL' | 'PRODUCTION' | 'TEST'>('ALL');
 
   const loadClaims = async () => {
     setIsLoading(true);
@@ -45,7 +46,8 @@ export const ClaimsPage: React.FC = () => {
       claimId: r.claimId,
       claimedAt: r.claimedAt || undefined,
       verifiedBy: r.verifiedBy,
-      staffNotes: r.staffNotes
+      staffNotes: r.staffNotes,
+      isTest: r.isTest || false
     }));
     setClaims(mappedItems);
     setIsLoading(false);
@@ -55,19 +57,29 @@ export const ClaimsPage: React.FC = () => {
     loadClaims();
   }, []);
 
-  // Summary Metrics
+  // Summary Metrics (Separates Test from Production Claims)
   const stats = useMemo(() => {
-    const total = claims.length;
-    const pending = claims.filter((c) => c.claimStatus === 'PENDING').length;
-    const fulfilled = claims.filter((c) => c.claimStatus === 'CLAIMED').length;
-    const highValue = claims.filter((c) => c.isHighValue && c.claimStatus === 'CLAIMED').length;
+    const scopeClaims = claims.filter((c) => {
+      if (dataScope === 'PRODUCTION') return !c.isTest;
+      if (dataScope === 'TEST') return c.isTest;
+      return true;
+    });
+
+    const total = scopeClaims.length;
+    const pending = scopeClaims.filter((c) => c.claimStatus === 'PENDING').length;
+    const fulfilled = scopeClaims.filter((c) => c.claimStatus === 'CLAIMED').length;
+    const highValue = scopeClaims.filter((c) => c.isHighValue && c.claimStatus === 'CLAIMED').length;
 
     return { total, pending, fulfilled, highValue };
-  }, [claims]);
+  }, [claims, dataScope]);
 
   // Filtered Claims List
   const filteredClaims = useMemo(() => {
     return claims.filter((item) => {
+      // Scope Filter (ALL / PRODUCTION / TEST)
+      if (dataScope === 'PRODUCTION' && item.isTest) return false;
+      if (dataScope === 'TEST' && !item.isTest) return false;
+
       if (searchTerm.trim()) {
         const queryStr = searchTerm.trim().toUpperCase();
         const matchesId = item.claimId.toUpperCase().includes(queryStr);
@@ -81,7 +93,7 @@ export const ClaimsPage: React.FC = () => {
 
       return true;
     });
-  }, [claims, searchTerm, selectedStatus]);
+  }, [claims, searchTerm, selectedStatus, dataScope]);
 
   // Verification Handlers
   const handleOpenVerification = (claim?: WinnerItem) => {
@@ -173,6 +185,43 @@ export const ClaimsPage: React.FC = () => {
             <span>Verify Claim</span>
           </button>
         </div>
+      </div>
+
+      {/* Scope Filter Tabs: ALL / PRODUCTION / TEST */}
+      <div className="flex items-center gap-2 bg-[#1D0636]/60 p-1.5 rounded-2xl border border-[#FFD700]/20 w-fit">
+        <button
+          onClick={() => setDataScope('ALL')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            dataScope === 'ALL'
+              ? 'bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D021A] shadow-gold-glow'
+              : 'text-[#A0A0A0] hover:text-white'
+          }`}
+        >
+          All Claims ({claims.length})
+        </button>
+        <button
+          onClick={() => setDataScope('PRODUCTION')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            dataScope === 'PRODUCTION'
+              ? 'bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D021A] shadow-gold-glow'
+              : 'text-[#A0A0A0] hover:text-white'
+          }`}
+        >
+          Production ({claims.filter((c) => !c.isTest).length})
+        </button>
+        <button
+          onClick={() => setDataScope('TEST')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            dataScope === 'TEST'
+              ? 'bg-fuchsia-600 text-white shadow-[0_0_15px_rgba(217,70,239,0.5)]'
+              : 'text-fuchsia-400/80 hover:text-fuchsia-300'
+          }`}
+        >
+          <span>🧪 Test Mode</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-[#0D021A] text-[10px]">
+            {claims.filter((c) => c.isTest).length}
+          </span>
+        </button>
       </div>
 
       {isLoading ? (

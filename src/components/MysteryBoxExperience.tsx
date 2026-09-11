@@ -29,6 +29,12 @@ export const MysteryBoxExperience: React.FC<MysteryBoxExperienceProps> = ({
   // Load Time Slot Configuration & Evaluate Time Gating State
   useEffect(() => {
     async function loadSlot() {
+      // Demo / Test Mode: Immediately unlock mystery boxes for client demonstration
+      if (tokenCode.startsWith('TEST-')) {
+        setSlotStatus('UNLOCKED');
+        return;
+      }
+
       try {
         const slots = await CampaignService.getTimeSlots('akm-diwali-2026');
         const currentSlot = slots.find(s => s.slotId === slotId || s.id === slotId) || slots[0];

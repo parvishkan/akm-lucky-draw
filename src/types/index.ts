@@ -13,6 +13,7 @@ export interface TokenVerificationData {
   isValid?: boolean;
   status?: string;
   slotId?: string;
+  isTest?: boolean;
 }
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

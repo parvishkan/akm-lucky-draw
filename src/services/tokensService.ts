@@ -20,7 +20,7 @@ export interface TokenRecord {
   tokenCode: string;
   campaignId: string;
   slotId?: string;
-  status: 'AVAILABLE' | 'UNUSED' | 'VERIFIED' | 'USED' | 'CLAIMED' | 'BLOCKED';
+  status: 'AVAILABLE' | 'UNUSED' | 'VERIFIED' | 'USED' | 'CLAIMED' | 'BLOCKED' | 'REDEEMED';
   assignedPrizeId?: string;
   assignedPrizeName?: string;
   createdAt: any;
@@ -32,6 +32,7 @@ export interface TokenRecord {
   claimStatus?: string;
   prizeTitle?: string;
   claimedDate?: string;
+  isTest?: boolean;
 }
 
 export class TokensService {
@@ -79,6 +80,35 @@ export class TokensService {
 
     if (!cleanCode) {
       return { success: false, status: 'EMPTY', message: 'Please enter your lucky token code from your billing receipt.' };
+    }
+
+    // Isolated Client Verification for Test Tokens
+    if (cleanCode.startsWith('TEST-')) {
+      try {
+        const testDocRef = doc(db, collections.TEST_TOKENS, cleanCode);
+        const testSnap = await getDoc(testDocRef);
+
+        if (testSnap.exists()) {
+          const testData = testSnap.data() as TokenRecord;
+          const currentStatus = testData.status;
+
+          if (currentStatus === 'REDEEMED' || currentStatus === 'VERIFIED' || currentStatus === 'USED' || currentStatus === 'CLAIMED') {
+            return { success: false, status: 'USED', message: 'This test token code has already been redeemed.' };
+          }
+
+          return {
+            success: true,
+            status: 'AVAILABLE',
+            message: 'Test token verified successfully (Demo Mode).',
+            tokenData: { ...testData, id: testSnap.id, isTest: true }
+          };
+        } else {
+          return { success: false, status: 'INVALID', message: 'Test token code not recognized.' };
+        }
+      } catch (err) {
+        console.warn('Test token verification error:', err);
+        return { success: false, status: 'ERROR', message: 'Unable to connect to verification server.' };
+      }
     }
 
     try {
@@ -281,6 +311,165 @@ export class TokensService {
     }
 
     return deletedCount;
+  }
+
+  /**
+   * Demo / Test Mode: Generate isolated test tokens into /testTokens collection
+   * Never touches production campaign tokens or slot limits.
+   */
+  static async generateTestTokens(count: 1 | 5 | 10 = 5): Promise<{ success: boolean; tokens: string[]; message: string }> {
+    try {
+      const chars = 'ABCDEFGHJKLMNPQRTUVWXY2346789';
+      const batch = writeBatch(db);
+      const generatedCodes: string[] = [];
+
+      for (let i = 0; i < count; i++) {
+        // Cryptographically secure random generation
+        const randArray = new Uint8Array(5);
+        if (typeof window !== 'undefined' && window.crypto) {
+          window.crypto.getRandomValues(randArray);
+        } else {
+          for (let j = 0; j < 5; j++) randArray[j] = Math.floor(Math.random() * 256);
+        }
+
+        let randStr = '';
+        for (let j = 0; j < 5; j++) {
+          randStr += chars[randArray[j] % chars.length];
+        }
+
+        const tokenCode = `TEST-AKM-${randStr}`;
+        generatedCodes.push(tokenCode);
+
+        const testDocRef = doc(db, collections.TEST_TOKENS, tokenCode);
+        batch.set(testDocRef, {
+          tokenId: tokenCode,
+          tokenCode,
+          status: 'AVAILABLE',
+          isTest: true,
+          createdAt: serverTimestamp(),
+          createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        });
+      }
+
+      await batch.commit();
+
+      return {
+        success: true,
+        tokens: generatedCodes,
+        message: `Successfully generated ${count} test token(s) for client demonstration.`
+      };
+    } catch (err: any) {
+      console.error('Failed to generate test tokens:', err);
+      return {
+        success: false,
+        tokens: [],
+        message: err?.message || 'Failed to generate test tokens in Firestore.'
+      };
+    }
+  }
+
+  /**
+   * Fetch all test tokens from /testTokens
+   */
+  static async getTestTokens(): Promise<TokenRecord[]> {
+    try {
+      const snapshot = await getDocs(collection(db, collections.TEST_TOKENS));
+      if (!snapshot.empty) {
+        return snapshot.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            tokenId: data.tokenId || d.id,
+            tokenCode: data.tokenCode || data.tokenId || d.id,
+            campaignId: 'DEMO-MODE',
+            slotId: 'demo-slot',
+            status: data.status || 'AVAILABLE',
+            assignedPrizeName: data.prizeTitle || 'Demo Prize (Reveals on Unlock)',
+            prizeTitle: data.prizeTitle || 'Demo Prize (Reveals on Unlock)',
+            createdAt: data.createdAt,
+            createdDate: data.createdDate || 'Today',
+            verifiedAt: data.redeemedAt,
+            winnerId: data.winnerId,
+            claimId: data.claimId,
+            claimStatus: data.claimStatus,
+            isTest: true
+          } as TokenRecord;
+        });
+      }
+    } catch (err) {
+      console.warn('Firestore getTestTokens error:', err);
+    }
+    return [];
+  }
+
+  /**
+   * Admin-Only: Clear all test data (testTokens, and test records in winners, claims, activityLogs)
+   * GUARANTEE: NEVER deletes production tokens, production prizes, or real campaign data.
+   */
+  static async clearAllTestData(): Promise<{ success: boolean; deletedCount: number; message: string }> {
+    try {
+      let totalDeleted = 0;
+
+      // 1. Delete all /testTokens
+      const testTokensSnap = await getDocs(collection(db, collections.TEST_TOKENS));
+      if (!testTokensSnap.empty) {
+        const batch1 = writeBatch(db);
+        testTokensSnap.docs.forEach((d) => {
+          batch1.delete(d.ref);
+          totalDeleted++;
+        });
+        await batch1.commit();
+      }
+
+      // 2. Delete test records from /winners where isTest == true
+      const testWinnersQ = query(collection(db, collections.WINNERS), where('isTest', '==', true));
+      const testWinnersSnap = await getDocs(testWinnersQ);
+      if (!testWinnersSnap.empty) {
+        const batch2 = writeBatch(db);
+        testWinnersSnap.docs.forEach((d) => {
+          batch2.delete(d.ref);
+          totalDeleted++;
+        });
+        await batch2.commit();
+      }
+
+      // 3. Delete test records from /claims where isTest == true
+      const testClaimsQ = query(collection(db, collections.CLAIMS), where('isTest', '==', true));
+      const testClaimsSnap = await getDocs(testClaimsQ);
+      if (!testClaimsSnap.empty) {
+        const batch3 = writeBatch(db);
+        testClaimsSnap.docs.forEach((d) => {
+          batch3.delete(d.ref);
+          totalDeleted++;
+        });
+        await batch3.commit();
+      }
+
+      // 4. Delete test records from /activityLogs where isTest == true
+      const testLogsQ = query(collection(db, collections.ACTIVITY_LOGS), where('isTest', '==', true));
+      const testLogsSnap = await getDocs(testLogsQ);
+      if (!testLogsSnap.empty) {
+        const batch4 = writeBatch(db);
+        testLogsSnap.docs.forEach((d) => {
+          batch4.delete(d.ref);
+          totalDeleted++;
+        });
+        await batch4.commit();
+      }
+
+      return {
+        success: true,
+        deletedCount: totalDeleted,
+        message: `Successfully cleared ${totalDeleted} test/demo records. Production data remains 100% untouched.`
+      };
+    } catch (err: any) {
+      console.error('Failed to clear test data:', err);
+      return {
+        success: false,
+        deletedCount: 0,
+        message: err?.message || 'Failed to clear test data from Firestore.'
+      };
+    }
   }
 }
 

@@ -14,6 +14,7 @@ export interface TokenItem {
   claimId?: string;
   claimStatus?: string;
   claimedDate?: string;
+  isTest?: boolean;
 }
 
 interface TokenTableProps {
@@ -78,7 +79,14 @@ export const TokenTable: React.FC<TokenTableProps> = ({
                   </td>
 
                   <td className="py-3 px-4 font-mono font-bold text-white tracking-wider">
-                    {item.tokenCode}
+                    <div className="flex items-center gap-2">
+                      <span>{item.tokenCode}</span>
+                      {item.isTest && (
+                        <span className="px-2 py-0.5 rounded-full bg-fuchsia-950/90 border border-fuchsia-500/50 text-fuchsia-300 font-bold text-[10px] uppercase tracking-wider">
+                          🧪 TEST
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   <td className="py-3 px-4">
@@ -162,7 +170,14 @@ export const TokenTable: React.FC<TokenTableProps> = ({
                     onChange={() => onSelectToken(item.id)}
                     className="w-4 h-4 rounded border-[#FFD700]/40 bg-[#0D021A] text-[#FFD700] focus:ring-0"
                   />
-                  <span className="font-mono text-sm font-bold text-white">{item.tokenCode}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-sm font-bold text-white">{item.tokenCode}</span>
+                    {item.isTest && (
+                      <span className="px-1.5 py-0.5 rounded bg-fuchsia-950 border border-fuchsia-500/50 text-fuchsia-300 font-bold text-[9px] uppercase tracking-wider">
+                        🧪 TEST
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <StatusBadge status={item.status} />
               </div>

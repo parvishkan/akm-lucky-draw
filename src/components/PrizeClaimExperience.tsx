@@ -28,6 +28,8 @@ export const PrizeClaimExperience: React.FC<PrizeClaimExperienceProps> = ({
     }, 600);
   };
 
+  const isTestMode = tokenData?.isTest || claimId?.startsWith('TEST-') || tokenData?.tokenCode?.startsWith('TEST-');
+
   return (
     <div className="w-full max-w-sm mx-auto px-4 py-6 text-center select-none space-y-5 z-10">
       
@@ -38,17 +40,25 @@ export const PrizeClaimExperience: React.FC<PrizeClaimExperienceProps> = ({
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="space-y-1.5"
       >
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-400/50 text-emerald-300 text-xs font-semibold uppercase tracking-wider shadow-[0_0_25px_rgba(52,211,153,0.3)]">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Verified Prize Pass</span>
-        </div>
+        {isTestMode ? (
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-fuchsia-950/90 border border-fuchsia-400/60 text-fuchsia-300 text-xs font-semibold uppercase tracking-wider shadow-[0_0_25px_rgba(217,70,239,0.35)]">
+            <span>🧪 Demo Mode • Test Prize Pass</span>
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-400/50 text-emerald-300 text-xs font-semibold uppercase tracking-wider shadow-[0_0_25px_rgba(52,211,153,0.3)]">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Verified Prize Pass</span>
+          </div>
+        )}
 
         <h2 className="font-heading text-2xl font-bold text-gold-metallic">
           Digital Prize Claim Card
         </h2>
 
         <p className="text-xs text-gray-300 font-sans leading-relaxed">
-          Present this pass at Anu Krishna Mall Help Desk to collect your prize.
+          {isTestMode
+            ? 'Demonstration sample prize pass. (Demo Mode: Not valid for store redemption).'
+            : 'Present this pass at Anu Krishna Mall Help Desk to collect your prize.'}
         </p>
       </motion.div>
 

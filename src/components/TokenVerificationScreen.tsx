@@ -39,7 +39,8 @@ export const TokenVerificationScreen: React.FC<TokenVerificationProps> = ({ onSu
               tokenCode: cleanCode,
               verifiedAt: new Date().toISOString(),
               isValid: true,
-              status: 'VERIFIED'
+              status: 'VERIFIED',
+              isTest: result.tokenData?.isTest || cleanCode.startsWith('TEST-')
             });
           }, 1200);
         }, 1200);

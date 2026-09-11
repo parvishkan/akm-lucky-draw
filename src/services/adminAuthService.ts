@@ -29,19 +29,6 @@ export class AdminAuthService {
       console.warn('Admin authorization doc lookup warning:', err);
     }
 
-    // Fallback for development preview if user matches designated admin email domain
-    if (user.email && (user.email.endsWith('@anukrishnamall.com') || user.email === 'admin@anukrishnamall.com')) {
-      return {
-        isAuthorized: true,
-        profile: {
-          uid: user.uid,
-          email: user.email,
-          role: 'ADMIN',
-          status: 'ACTIVE'
-        }
-      };
-    }
-
     return { isAuthorized: false };
   }
 

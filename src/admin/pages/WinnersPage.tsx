@@ -21,6 +21,7 @@ export const WinnersPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedDate, setSelectedDate] = useState('ALL');
   const [sortBy, setSortBy] = useState('NEWEST');
+  const [dataScope, setDataScope] = useState<'ALL' | 'PRODUCTION' | 'TEST'>('ALL');
 
   const loadWinners = async () => {
     setIsLoading(true);
@@ -41,7 +42,8 @@ export const WinnersPage: React.FC = () => {
             claimId: data.claimId || `CLM-${d.id.substring(0, 5)}`,
             claimedAt: data.claimedAt,
             verifiedBy: data.verifiedBy,
-            staffNotes: data.staffNotes
+            staffNotes: data.staffNotes,
+            isTest: data.isTest || false
           };
         });
         setWinners(items);
@@ -59,20 +61,30 @@ export const WinnersPage: React.FC = () => {
     loadWinners();
   }, []);
 
-  // Summary Metrics
+  // Summary Metrics (Separates Test from Production Stats)
   const stats = useMemo(() => {
-    const total = winners.length;
-    const today = winners.filter((w) => w.wonAt.includes('2026') || w.wonAt.includes('Today')).length;
-    const pending = winners.filter((w) => w.claimStatus === 'PENDING').length;
-    const claimed = winners.filter((w) => w.claimStatus === 'CLAIMED').length;
-    const highValue = winners.filter((w) => w.isHighValue).length;
+    const scopeWinners = winners.filter((w) => {
+      if (dataScope === 'PRODUCTION') return !w.isTest;
+      if (dataScope === 'TEST') return w.isTest;
+      return true;
+    });
+
+    const total = scopeWinners.length;
+    const today = scopeWinners.filter((w) => w.wonAt.includes('2026') || w.wonAt.includes('Today')).length;
+    const pending = scopeWinners.filter((w) => w.claimStatus === 'PENDING').length;
+    const claimed = scopeWinners.filter((w) => w.claimStatus === 'CLAIMED').length;
+    const highValue = scopeWinners.filter((w) => w.isHighValue).length;
 
     return { total, today, pending, claimed, highValue };
-  }, [winners]);
+  }, [winners, dataScope]);
 
   // Filtered & Sorted Winners
   const filteredWinners = useMemo(() => {
     return winners.filter((item) => {
+      // Scope Filter (ALL / PRODUCTION / TEST)
+      if (dataScope === 'PRODUCTION' && item.isTest) return false;
+      if (dataScope === 'TEST' && !item.isTest) return false;
+
       if (searchTerm.trim()) {
         const queryStr = searchTerm.trim().toUpperCase();
         const matchesId = item.id.toUpperCase().includes(queryStr);
@@ -131,6 +143,43 @@ export const WinnersPage: React.FC = () => {
           title="Refresh Winners"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Scope Filter Tabs: ALL / PRODUCTION / TEST */}
+      <div className="flex items-center gap-2 bg-[#1D0636]/60 p-1.5 rounded-2xl border border-[#FFD700]/20 w-fit">
+        <button
+          onClick={() => setDataScope('ALL')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            dataScope === 'ALL'
+              ? 'bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D021A] shadow-gold-glow'
+              : 'text-[#A0A0A0] hover:text-white'
+          }`}
+        >
+          All Winners ({winners.length})
+        </button>
+        <button
+          onClick={() => setDataScope('PRODUCTION')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            dataScope === 'PRODUCTION'
+              ? 'bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D021A] shadow-gold-glow'
+              : 'text-[#A0A0A0] hover:text-white'
+          }`}
+        >
+          Production ({winners.filter((w) => !w.isTest).length})
+        </button>
+        <button
+          onClick={() => setDataScope('TEST')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            dataScope === 'TEST'
+              ? 'bg-fuchsia-600 text-white shadow-[0_0_15px_rgba(217,70,239,0.5)]'
+              : 'text-fuchsia-400/80 hover:text-fuchsia-300'
+          }`}
+        >
+          <span>🧪 Test Mode</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-[#0D021A] text-[10px]">
+            {winners.filter((w) => w.isTest).length}
+          </span>
         </button>
       </div>
 

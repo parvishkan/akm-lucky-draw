@@ -8,6 +8,7 @@ export interface DashboardMetrics {
   totalWinners: number;
   pendingClaims: number;
   claimedGifts: number;
+  demoTestsRun: number;
 }
 
 export class DashboardService {
@@ -23,10 +24,13 @@ export class DashboardService {
         getDocs(collection(db, collections.CLAIMS))
       ]);
 
-      const tokens = tokensSnap.docs.map(d => d.data());
+      const tokens = tokensSnap.docs.map(d => d.data()).filter(t => !t.isTest);
       const prizes = prizesSnap.docs.map(d => d.data());
-      const winners = winnersSnap.docs.map(d => d.data());
-      const claims = claimsSnap.docs.map(d => d.data());
+      // Filter out demo/test records to protect production statistics
+      const allWinners = winnersSnap.docs.map(d => d.data());
+      const winners = allWinners.filter(w => !w.isTest);
+      const claims = claimsSnap.docs.map(d => d.data()).filter(c => !c.isTest);
+      const demoTestsRun = allWinners.filter(w => w.isTest).length;
 
       const totalTokens = tokens.length;
       const verifiedTokens = tokens.filter(t => t.status === 'VERIFIED' || t.status === 'USED' || t.status === 'CLAIMED').length;
@@ -46,7 +50,8 @@ export class DashboardService {
         availableGifts,
         totalWinners,
         pendingClaims,
-        claimedGifts
+        claimedGifts,
+        demoTestsRun
       };
     } catch (err) {
       console.warn('DashboardService getLiveMetrics fallback:', err);
@@ -56,7 +61,8 @@ export class DashboardService {
         availableGifts: 0,
         totalWinners: 0,
         pendingClaims: 0,
-        claimedGifts: 0
+        claimedGifts: 0,
+        demoTestsRun: 0
       };
     }
   }

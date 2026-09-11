@@ -15,6 +15,7 @@ export interface WinnerItem {
   claimedAt?: string;
   verifiedBy?: string;
   staffNotes?: string;
+  isTest?: boolean;
 }
 
 interface WinnerTableProps {
@@ -46,6 +47,11 @@ export const WinnerTable: React.FC<WinnerTableProps> = ({ winners, onViewDetails
                 <td className="py-3 px-4 font-mono font-bold text-white tracking-wider flex items-center gap-1.5">
                   <Trophy className="w-3.5 h-3.5 text-[#FFD700]" />
                   <span>{item.id}</span>
+                  {item.isTest && (
+                    <span className="px-2 py-0.5 rounded-full bg-fuchsia-950/90 border border-fuchsia-500/50 text-fuchsia-300 font-bold text-[10px] uppercase tracking-wider">
+                      🧪 TEST
+                    </span>
+                  )}
                 </td>
 
                 <td className="py-3 px-4 font-mono font-bold text-[#FFD700]">
@@ -98,6 +104,11 @@ export const WinnerTable: React.FC<WinnerTableProps> = ({ winners, onViewDetails
               <span className="font-mono text-sm font-bold text-white flex items-center gap-1.5">
                 <Trophy className="w-4 h-4 text-[#FFD700]" />
                 <span>{item.id}</span>
+                {item.isTest && (
+                  <span className="px-1.5 py-0.5 rounded bg-fuchsia-950 border border-fuchsia-500/50 text-fuchsia-300 font-bold text-[9px] uppercase tracking-wider">
+                    🧪 TEST
+                  </span>
+                )}
               </span>
               <ClaimStatusBadge status={item.claimStatus} />
             </div>

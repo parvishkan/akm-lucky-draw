@@ -32,7 +32,14 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({ claims, onVerifyClaim })
             {claims.map((item) => (
               <tr key={item.claimId} className="hover:bg-[#0D021A]/60 transition-colors">
                 <td className="py-3 px-4 font-mono font-bold text-[#FFD700]">
-                  {item.claimId}
+                  <div className="flex items-center gap-2">
+                    <span>{item.claimId}</span>
+                    {item.isTest && (
+                      <span className="px-2 py-0.5 rounded-full bg-fuchsia-950/90 border border-fuchsia-500/50 text-fuchsia-300 font-bold text-[10px] uppercase tracking-wider">
+                        🧪 TEST
+                      </span>
+                    )}
+                  </div>
                 </td>
 
                 <td className="py-3 px-4 font-mono font-bold text-white">
@@ -92,7 +99,14 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({ claims, onVerifyClaim })
         {claims.map((item) => (
           <div key={item.claimId} className="p-4 space-y-3 bg-[#0D021A]/80 text-left">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-sm font-bold text-[#FFD700]">{item.claimId}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-sm font-bold text-[#FFD700]">{item.claimId}</span>
+                {item.isTest && (
+                  <span className="px-1.5 py-0.5 rounded bg-fuchsia-950 border border-fuchsia-500/50 text-fuchsia-300 font-bold text-[9px] uppercase tracking-wider">
+                    🧪 TEST
+                  </span>
+                )}
+              </div>
               <ClaimStatusBadge status={item.claimStatus} />
             </div>
 

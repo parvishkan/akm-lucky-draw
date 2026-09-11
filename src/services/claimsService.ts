@@ -24,6 +24,7 @@ export interface ClaimItem {
   claimedAt?: string | null;
   verifiedBy?: string;
   staffNotes?: string;
+  isTest?: boolean;
 }
 
 export class ClaimsService {
@@ -49,7 +50,8 @@ export class ClaimsService {
             createdAt: data.createdAt || 'Today',
             claimedAt: data.claimedAt,
             verifiedBy: data.verifiedBy,
-            staffNotes: data.staffNotes
+            staffNotes: data.staffNotes,
+            isTest: data.isTest || false
           } as ClaimItem;
         });
       }

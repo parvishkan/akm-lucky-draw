@@ -1,11 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, Ticket, RefreshCw, Printer } from 'lucide-react';
+import { PlusCircle, Ticket, RefreshCw, Printer, FlaskConical, Trash2 } from 'lucide-react';
 import TokenStats from '../components/tokens/TokenStats';
 import TokenToolbar from '../components/tokens/TokenToolbar';
 import TokenTable, { TokenItem } from '../components/tokens/TokenTable';
 import TokenDetailsPanel from '../components/tokens/TokenDetailsPanel';
 import GenerateTokenModal from '../components/tokens/GenerateTokenModal';
+import GenerateTestTokenModal from '../components/tokens/GenerateTestTokenModal';
+import ClearTestDataModal from '../components/tokens/ClearTestDataModal';
 import BulkActionBar from '../components/tokens/BulkActionBar';
 import EmptyState from '../components/tokens/EmptyState';
 import LoadingSkeleton from '../components/tokens/LoadingSkeleton';
@@ -16,8 +18,11 @@ export const TokensPage: React.FC = () => {
   const [tokens, setTokens] = useState<TokenItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [isClearTestModalOpen, setIsClearTestModalOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<TokenItem | null>(null);
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
+  const [dataScope, setDataScope] = useState<'ALL' | 'PRODUCTION' | 'TEST'>('ALL');
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,11 +31,15 @@ export const TokensPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<string>('CREATED_DESC');
 
-  // Load tokens from Firestore
+  // Load tokens from Firestore (Both production and test collections)
   const loadTokens = async () => {
     setIsLoading(true);
-    const records = await TokensService.getAllTokens();
-    const mappedItems: TokenItem[] = records.map(r => ({
+    const [prodRecords, testRecords] = await Promise.all([
+      TokensService.getAllTokens(),
+      TokensService.getTestTokens()
+    ]);
+
+    const mappedProd: TokenItem[] = prodRecords.map(r => ({
       id: r.tokenId || r.id || 'token',
       tokenCode: r.tokenCode || r.tokenId,
       status: (r.status === 'AVAILABLE' ? 'UNUSED' : r.status) as TokenStatus,
@@ -39,9 +48,24 @@ export const TokensPage: React.FC = () => {
       prizeTitle: r.assignedPrizeName || r.prizeTitle || 'Unassigned (Reveals on Unlock)',
       claimId: r.claimId,
       claimStatus: r.claimStatus === 'PENDING' ? 'PENDING' : r.claimStatus === 'CLAIMED' ? 'FULFILLED' : undefined,
-      claimedDate: r.claimedDate
+      claimedDate: r.claimedDate,
+      isTest: false
     }));
-    setTokens(mappedItems);
+
+    const mappedTest: TokenItem[] = testRecords.map(r => ({
+      id: r.tokenId || r.id || 'test-token',
+      tokenCode: r.tokenCode || r.tokenId,
+      status: (r.status === 'AVAILABLE' ? 'UNUSED' : r.status === 'REDEEMED' ? 'CLAIMED' : r.status) as TokenStatus,
+      createdDate: r.createdDate || 'Today',
+      verifiedDate: r.verifiedDate,
+      prizeTitle: r.prizeTitle || 'Demo Prize (Reveals on Unlock)',
+      claimId: r.claimId,
+      claimStatus: r.claimStatus === 'PENDING' ? 'PENDING' : r.claimStatus === 'CLAIMED' ? 'FULFILLED' : undefined,
+      claimedDate: r.claimedDate,
+      isTest: true
+    }));
+
+    setTokens([...mappedProd, ...mappedTest]);
     setIsLoading(false);
   };
 
@@ -49,20 +73,30 @@ export const TokensPage: React.FC = () => {
     loadTokens();
   }, []);
 
-  // Summary Metrics calculation
+  // Summary Metrics calculation (Filtered by selected Data Scope)
   const summaryMetrics = useMemo(() => {
-    const total = tokens.length;
-    const unused = tokens.filter((t) => t.status === 'UNUSED').length;
-    const verified = tokens.filter((t) => t.status === 'VERIFIED').length;
-    const claimed = tokens.filter((t) => t.status === 'CLAIMED').length;
-    const blocked = tokens.filter((t) => t.status === 'BLOCKED').length;
+    const scopeTokens = tokens.filter((item) => {
+      if (dataScope === 'PRODUCTION') return !item.isTest;
+      if (dataScope === 'TEST') return item.isTest;
+      return true;
+    });
+
+    const total = scopeTokens.length;
+    const unused = scopeTokens.filter((t) => t.status === 'UNUSED').length;
+    const verified = scopeTokens.filter((t) => t.status === 'VERIFIED').length;
+    const claimed = scopeTokens.filter((t) => t.status === 'CLAIMED').length;
+    const blocked = scopeTokens.filter((t) => t.status === 'BLOCKED').length;
 
     return { total, unused, verified, claimed, blocked };
-  }, [tokens]);
+  }, [tokens, dataScope]);
 
   // Filtered & Sorted Tokens
   const filteredTokens = useMemo(() => {
     return tokens.filter((item) => {
+      // Data Scope filter (ALL / PRODUCTION / TEST)
+      if (dataScope === 'PRODUCTION' && item.isTest) return false;
+      if (dataScope === 'TEST' && !item.isTest) return false;
+
       if (searchTerm.trim()) {
         const queryStr = searchTerm.trim().toUpperCase();
         const matchesCode = item.tokenCode.toUpperCase().includes(queryStr);
@@ -80,7 +114,7 @@ export const TokensPage: React.FC = () => {
       if (sortBy === 'STATUS') return a.status.localeCompare(b.status);
       return b.id.localeCompare(a.id);
     });
-  }, [tokens, searchTerm, selectedStatus, sortBy]);
+  }, [tokens, searchTerm, selectedStatus, sortBy, dataScope]);
 
   // Selection handlers
   const handleSelectToken = (id: string) => {
@@ -220,8 +254,8 @@ export const TokensPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Primary CTA: + Generate Tokens & Print */}
-        <div className="flex items-center gap-2">
+        {/* Primary Actions: Print, Refresh, Demo Mode, Clear Test Data, Generate Slot Tokens */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handlePrintTokens}
             className="px-4 py-3 rounded-2xl bg-[#1D0636] border border-[#FFD700]/30 text-[#FFD700] font-bold text-xs flex items-center gap-2 hover:bg-[#0D021A] transition-colors cursor-pointer"
@@ -239,6 +273,27 @@ export const TokensPage: React.FC = () => {
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
 
+          {/* Dedicated Demo / Test Mode Button */}
+          <button
+            onClick={() => setIsTestModalOpen(true)}
+            className="px-4 py-3 rounded-2xl bg-fuchsia-950/80 border border-fuchsia-500/50 text-fuchsia-300 font-extrabold text-xs tracking-wider uppercase flex items-center gap-2 hover:bg-fuchsia-900/60 hover:border-fuchsia-400 hover:shadow-[0_0_20px_rgba(217,70,239,0.35)] transition-all cursor-pointer shrink-0"
+          >
+            <FlaskConical className="w-4 h-4 text-fuchsia-400" />
+            <span>🧪 Demo / Test Mode</span>
+          </button>
+
+          {/* Clear Test Data Button (shown if test tokens exist) */}
+          {tokens.some((t) => t.isTest) && (
+            <button
+              onClick={() => setIsClearTestModalOpen(true)}
+              className="px-3.5 py-3 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-300 font-bold text-xs flex items-center gap-1.5 hover:bg-rose-900/50 transition-colors cursor-pointer shrink-0"
+              title="Delete all demo test tokens and test winners"
+            >
+              <Trash2 className="w-4 h-4 text-rose-400" />
+              <span>Clear Test Data</span>
+            </button>
+          )}
+
           <button
             onClick={() => setIsGenerateModalOpen(true)}
             className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FFD700] via-[#D4AF37] to-[#FFD700] text-[#0D021A] font-extrabold text-xs tracking-widest uppercase flex items-center gap-2 hover:shadow-[0_0_25px_rgba(255,215,0,0.5)] transition-all cursor-pointer shrink-0"
@@ -247,6 +302,43 @@ export const TokensPage: React.FC = () => {
             <span>+ Generate Slot Tokens</span>
           </button>
         </div>
+      </div>
+
+      {/* Scope Filter Tabs: ALL / PRODUCTION / TEST */}
+      <div className="flex items-center gap-2 bg-[#1D0636]/60 p-1.5 rounded-2xl border border-[#FFD700]/20 w-fit">
+        <button
+          onClick={() => setDataScope('ALL')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            dataScope === 'ALL'
+              ? 'bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D021A] shadow-gold-glow'
+              : 'text-[#A0A0A0] hover:text-white'
+          }`}
+        >
+          All Tokens ({tokens.length})
+        </button>
+        <button
+          onClick={() => setDataScope('PRODUCTION')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            dataScope === 'PRODUCTION'
+              ? 'bg-gradient-to-r from-[#FFD700] to-[#D4AF37] text-[#0D021A] shadow-gold-glow'
+              : 'text-[#A0A0A0] hover:text-white'
+          }`}
+        >
+          Production ({tokens.filter((t) => !t.isTest).length})
+        </button>
+        <button
+          onClick={() => setDataScope('TEST')}
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            dataScope === 'TEST'
+              ? 'bg-fuchsia-600 text-white shadow-[0_0_15px_rgba(217,70,239,0.5)]'
+              : 'text-fuchsia-400/80 hover:text-fuchsia-300'
+          }`}
+        >
+          <span>🧪 Test Mode</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-[#0D021A] text-[10px]">
+            {tokens.filter((t) => t.isTest).length}
+          </span>
+        </button>
       </div>
 
       {isLoading ? (
@@ -322,6 +414,20 @@ export const TokensPage: React.FC = () => {
           <GenerateTokenModal
             isOpen={isGenerateModalOpen}
             onClose={() => setIsGenerateModalOpen(false)}
+            onSuccess={loadTokens}
+          />
+
+          {/* 8. Demo Test Token Modal */}
+          <GenerateTestTokenModal
+            isOpen={isTestModalOpen}
+            onClose={() => setIsTestModalOpen(false)}
+            onSuccess={loadTokens}
+          />
+
+          {/* 9. Clear Test Data Modal */}
+          <ClearTestDataModal
+            isOpen={isClearTestModalOpen}
+            onClose={() => setIsClearTestModalOpen(false)}
             onSuccess={loadTokens}
           />
         </>

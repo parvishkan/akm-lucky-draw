@@ -9,10 +9,18 @@ service cloud.firestore {
         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'ACTIVE';
     }
 
-    // 1. Admin Registry: STRICTLY RESTRICTED to active admins only.
+    // Role Helper: Checks if admin has OWNER or SUPER_ADMIN role
+    function isOwner() {
+      return isAdmin() &&
+        (get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['OWNER', 'SUPER_ADMIN']);
+    }
+
+    // 1. Admin Registry: Active admins can read registry; ONLY OWNERs can write (create/update/delete admins).
     // Customers CANNOT create /admins/{customerUID} to elevate their own privileges.
+    // Billing/Counter staff cannot modify admin privileges or promote users.
     match /admins/{adminId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow write: if isOwner();
     }
 
     // 2. Tokens: Customers can get a single token by ID to verify receipt.
@@ -65,6 +73,13 @@ service cloud.firestore {
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // 9. Test Tokens (Demo Mode): Isolated collection for client demonstrations
+    // Customers can verify a single test token; listing and administrative actions require isAdmin().
+    match /testTokens/{tokenId} {
+      allow get: if true;
+      allow list, create, update, delete: if isAdmin();
     }
   }
 }
