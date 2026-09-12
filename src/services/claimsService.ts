@@ -27,6 +27,61 @@ export interface ClaimItem {
   isTest?: boolean;
 }
 
+const formatTimestamp = (value: any, fallback = 'Today'): string => {
+  if (!value) return fallback;
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value.toDate === 'function') {
+    try {
+      return value.toDate().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (typeof value.seconds === 'number') {
+    try {
+      return new Date(value.seconds * 1000).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (value instanceof Date) {
+    try {
+      return value.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+};
+
 export class ClaimsService {
   /**
    * Fetch all claim records from Firestore /claims collection
@@ -47,8 +102,8 @@ export class ClaimsService {
             prizeName: data.prizeName || 'Diwali Gift',
             prizeValue: data.prizeValue || '₹5,000',
             claimStatus: data.claimStatus || data.status || 'PENDING',
-            createdAt: data.createdAt || 'Today',
-            claimedAt: data.claimedAt,
+            createdAt: formatTimestamp(data.createdAt, 'Today'),
+            claimedAt: data.claimedAt ? formatTimestamp(data.claimedAt, '') : undefined,
             verifiedBy: data.verifiedBy,
             staffNotes: data.staffNotes,
             isTest: data.isTest || false

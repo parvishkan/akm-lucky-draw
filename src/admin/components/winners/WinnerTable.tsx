@@ -23,6 +23,40 @@ interface WinnerTableProps {
   onViewDetails: (winner: WinnerItem) => void;
 }
 
+const formatDisplayDate = (val: any): string => {
+  if (!val) return 'Today';
+  if (typeof val === 'string') return val;
+  if (typeof val.toDate === 'function') {
+    try {
+      return val.toDate().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return 'Today';
+    }
+  }
+  if (typeof val.seconds === 'number') {
+    try {
+      return new Date(val.seconds * 1000).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return 'Today';
+    }
+  }
+  return String(val);
+};
+
 export const WinnerTable: React.FC<WinnerTableProps> = ({ winners, onViewDetails }) => {
   return (
     <div className="bg-[#1D0636]/80 border border-[#FFD700]/25 rounded-3xl overflow-hidden shadow-glass select-none">
@@ -70,7 +104,7 @@ export const WinnerTable: React.FC<WinnerTableProps> = ({ winners, onViewDetails
                 </td>
 
                 <td className="py-3 px-4 text-[#A0A0A0] font-mono text-[11px]">
-                  {item.wonAt}
+                  {typeof item.wonAt === 'string' ? item.wonAt : formatDisplayDate(item.wonAt)}
                 </td>
 
                 <td className="py-3 px-4">
@@ -121,7 +155,9 @@ export const WinnerTable: React.FC<WinnerTableProps> = ({ winners, onViewDetails
               <div className="text-[11px] font-mono text-[#A0A0A0]">
                 Token: <strong className="text-white">{item.tokenCode}</strong> • Claim: <strong className="text-[#D4AF37]">{item.claimId}</strong>
               </div>
-              <div className="text-[10px] font-mono text-[#A0A0A0]">Won At: {item.wonAt}</div>
+              <div className="text-[10px] font-mono text-[#A0A0A0]">
+                Won At: {typeof item.wonAt === 'string' ? item.wonAt : formatDisplayDate(item.wonAt)}
+              </div>
             </div>
 
             <div className="pt-2 border-t border-[#FFD700]/10 flex justify-end">

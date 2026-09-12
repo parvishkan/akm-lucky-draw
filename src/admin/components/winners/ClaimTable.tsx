@@ -8,6 +8,40 @@ interface ClaimTableProps {
   onVerifyClaim: (claim: WinnerItem) => void;
 }
 
+const formatDisplayDate = (val: any): string => {
+  if (!val) return 'Today';
+  if (typeof val === 'string') return val;
+  if (typeof val.toDate === 'function') {
+    try {
+      return val.toDate().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return 'Today';
+    }
+  }
+  if (typeof val.seconds === 'number') {
+    try {
+      return new Date(val.seconds * 1000).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return 'Today';
+    }
+  }
+  return String(val);
+};
+
 export const ClaimTable: React.FC<ClaimTableProps> = ({ claims, onVerifyClaim }) => {
   return (
     <div className="bg-[#1D0636]/80 border border-[#FFD700]/25 rounded-3xl overflow-hidden shadow-glass select-none">
@@ -62,11 +96,11 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({ claims, onVerifyClaim })
                 </td>
 
                 <td className="py-3 px-4 text-[#A0A0A0] font-mono text-[11px]">
-                  {item.wonAt}
+                  {typeof item.wonAt === 'string' ? item.wonAt : formatDisplayDate(item.wonAt)}
                 </td>
 
                 <td className="py-3 px-4 text-[#A0A0A0] font-mono text-[11px]">
-                  {item.claimedAt || '—'}
+                  {item.claimedAt ? (typeof item.claimedAt === 'string' ? item.claimedAt : formatDisplayDate(item.claimedAt)) : '—'}
                 </td>
 
                 <td className="py-3 px-4 text-white font-mono text-[11px]">

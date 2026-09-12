@@ -9,13 +9,50 @@ interface WinnerDetailsPanelProps {
   onClose: () => void;
 }
 
+const formatDisplayDate = (val: any, fallback = 'Today'): string => {
+  if (!val) return fallback;
+  if (typeof val === 'string') return val;
+  if (typeof val.toDate === 'function') {
+    try {
+      return val.toDate().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+  if (typeof val.seconds === 'number') {
+    try {
+      return new Date(val.seconds * 1000).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+  return String(val);
+};
+
 export const WinnerDetailsPanel: React.FC<WinnerDetailsPanelProps> = ({ winner, onClose }) => {
   if (!winner) return null;
 
+  const formattedWonAt = formatDisplayDate(winner.wonAt, 'Today');
+  const formattedClaimedAt = winner.claimedAt ? formatDisplayDate(winner.claimedAt, '') : undefined;
+
   const activityLogs = [
-    { title: 'Lucky Draw Box Selection', time: winner.wonAt, desc: `Customer opened box and won ${winner.prizeName}.` },
-    { title: 'Claim Pass Generated', time: winner.wonAt, desc: `Unique Claim ID ${winner.claimId} generated for Help Desk verification.` },
-    ...(winner.claimedAt ? [{ title: 'Prize Handover Completed', time: winner.claimedAt, desc: `Verified & fulfilled at counter by ${winner.verifiedBy || 'Senior Admin'}.` }] : []),
+    { title: 'Lucky Draw Box Selection', time: formattedWonAt, desc: `Customer opened box and won ${winner.prizeName}.` },
+    { title: 'Claim Pass Generated', time: formattedWonAt, desc: `Unique Claim ID ${winner.claimId} generated for Help Desk verification.` },
+    ...(formattedClaimedAt ? [{ title: 'Prize Handover Completed', time: formattedClaimedAt, desc: `Verified & fulfilled at counter by ${winner.verifiedBy || 'Senior Admin'}.` }] : []),
   ];
 
   return (
@@ -95,12 +132,12 @@ export const WinnerDetailsPanel: React.FC<WinnerDetailsPanelProps> = ({ winner, 
           </div>
           <div className="p-3 rounded-xl bg-[#0D021A] border border-[#FFD700]/20 flex justify-between">
             <span className="text-[#A0A0A0]">Won Timestamp:</span>
-            <span className="text-white">{winner.wonAt}</span>
+            <span className="text-white">{formattedWonAt}</span>
           </div>
           {winner.claimedAt && (
             <div className="p-3 rounded-xl bg-[#0D021A] border border-[#FFD700]/20 flex justify-between">
               <span className="text-[#A0A0A0]">Claimed Timestamp:</span>
-              <span className="text-emerald-400 font-bold">{winner.claimedAt}</span>
+              <span className="text-emerald-400 font-bold">{formattedClaimedAt}</span>
             </div>
           )}
           {winner.verifiedBy && (

@@ -12,6 +12,61 @@ import LoadingSkeleton from '../components/winners/LoadingSkeleton';
 import { WinnerItem } from '../components/winners/WinnerTable';
 import { ClaimsService } from '../../services/claimsService';
 
+const formatTimestamp = (value: any, fallback = 'Today'): string => {
+  if (!value) return fallback;
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value.toDate === 'function') {
+    try {
+      return value.toDate().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (typeof value.seconds === 'number') {
+    try {
+      return new Date(value.seconds * 1000).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (value instanceof Date) {
+    try {
+      return value.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+};
+
 export const ClaimsPage: React.FC = () => {
   const [claims, setClaims] = useState<WinnerItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,11 +95,11 @@ export const ClaimsPage: React.FC = () => {
       prizeName: r.prizeName || 'Diwali Gift',
       prizeCategory: 'Diwali Privilege',
       prizeImage: '/akm-logo.png',
-      isHighValue: r.prizeValue ? r.prizeValue.includes('10,000') || r.prizeValue.includes('Gold') : false,
-      wonAt: r.createdAt || 'Today',
+      isHighValue: r.prizeValue ? String(r.prizeValue).includes('10,000') || String(r.prizeValue).includes('Gold') : false,
+      wonAt: formatTimestamp(r.createdAt, 'Today'),
       claimStatus: r.claimStatus === 'CLAIMED' ? 'CLAIMED' : 'PENDING',
       claimId: r.claimId,
-      claimedAt: r.claimedAt || undefined,
+      claimedAt: r.claimedAt ? formatTimestamp(r.claimedAt, '') : undefined,
       verifiedBy: r.verifiedBy,
       staffNotes: r.staffNotes,
       isTest: r.isTest || false

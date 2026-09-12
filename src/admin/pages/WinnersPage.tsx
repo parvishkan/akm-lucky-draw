@@ -10,6 +10,61 @@ import LoadingSkeleton from '../components/winners/LoadingSkeleton';
 import { db, collections } from '../../services/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
+export const formatTimestamp = (value: any, fallback = 'Today'): string => {
+  if (!value) return fallback;
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value.toDate === 'function') {
+    try {
+      return value.toDate().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (typeof value.seconds === 'number') {
+    try {
+      return new Date(value.seconds * 1000).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (value instanceof Date) {
+    try {
+      return value.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+};
+
 export const WinnersPage: React.FC = () => {
   const [winners, setWinners] = useState<WinnerItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,11 +91,11 @@ export const WinnersPage: React.FC = () => {
             prizeName: data.prizeName || 'Diwali Gift',
             prizeCategory: data.prizeCategory || 'Diwali Privilege',
             prizeImage: '/akm-logo.png',
-            isHighValue: data.prizeValue ? data.prizeValue.includes('10,000') || data.prizeValue.includes('Gold') || data.prizeValue.includes('iPhone') : false,
-            wonAt: data.wonAt || 'Today',
+            isHighValue: data.prizeValue ? String(data.prizeValue).includes('10,000') || String(data.prizeValue).includes('Gold') || String(data.prizeValue).includes('iPhone') : false,
+            wonAt: formatTimestamp(data.wonAt, 'Today'),
             claimStatus: (data.claimStatus === 'CLAIMED' || data.status === 'CLAIMED') ? 'CLAIMED' : 'PENDING',
             claimId: data.claimId || `CLM-${d.id.substring(0, 5)}`,
-            claimedAt: data.claimedAt,
+            claimedAt: data.claimedAt ? formatTimestamp(data.claimedAt, '') : undefined,
             verifiedBy: data.verifiedBy,
             staffNotes: data.staffNotes,
             isTest: data.isTest || false
@@ -70,7 +125,7 @@ export const WinnersPage: React.FC = () => {
     });
 
     const total = scopeWinners.length;
-    const today = scopeWinners.filter((w) => w.wonAt.includes('2026') || w.wonAt.includes('Today')).length;
+    const today = scopeWinners.filter((w) => (typeof w.wonAt === 'string' ? w.wonAt.includes('2026') || w.wonAt.includes('Today') : false)).length;
     const pending = scopeWinners.filter((w) => w.claimStatus === 'PENDING').length;
     const claimed = scopeWinners.filter((w) => w.claimStatus === 'CLAIMED').length;
     const highValue = scopeWinners.filter((w) => w.isHighValue).length;
