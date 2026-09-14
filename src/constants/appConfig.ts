@@ -2,7 +2,7 @@
  * Centralized Production Campaign Base URL
  * Master source of truth for QR generation, download, print, and customer routing.
  */
-export const CAMPAIGN_BASE_URL = 'https://draw.anukrishnamall.in';
+export const CAMPAIGN_BASE_URL = 'https://akm-lucky-draw.vercel.app';
 
 export const APP_CONFIG = {
   brand: {
