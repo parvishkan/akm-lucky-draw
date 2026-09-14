@@ -1,5 +1,5 @@
 import { db, collections } from './firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 
 export interface DashboardMetrics {
   totalTokens: number;
@@ -65,6 +65,105 @@ export class DashboardService {
         demoTestsRun: 0
       };
     }
+  }
+
+  /**
+   * Subscribes to real-time live dashboard metrics across TOKENS, PRIZES, WINNERS, and CLAIMS
+   */
+  static subscribeToLiveMetrics(
+    onUpdate: (metrics: DashboardMetrics) => void,
+    onError?: (err: Error) => void
+  ): () => void {
+    let tokensDocs: any[] = [];
+    let prizesDocs: any[] = [];
+    let winnersDocs: any[] = [];
+    let claimsDocs: any[] = [];
+
+    const recalculateAndEmit = () => {
+      const tokens = tokensDocs.filter(t => !t.isTest);
+      const prizes = prizesDocs;
+      const allWinners = winnersDocs;
+      const winners = allWinners.filter(w => !w.isTest);
+      const claims = claimsDocs.filter(c => !c.isTest);
+      const demoTestsRun = allWinners.filter(w => w.isTest).length;
+
+      const totalTokens = tokens.length;
+      const verifiedTokens = tokens.filter(t => t.status === 'VERIFIED' || t.status === 'USED' || t.status === 'CLAIMED').length;
+
+      let availableGifts = 0;
+      prizes.forEach(p => {
+        availableGifts += (p.availableQuantity ?? p.remainingStock ?? p.quantity ?? 0);
+      });
+
+      const totalWinners = winners.length;
+      const pendingClaims = claims.filter(c => (c.claimStatus === 'PENDING' || c.status === 'PENDING')).length;
+      const claimedGifts = claims.filter(c => (c.claimStatus === 'CLAIMED' || c.status === 'CLAIMED')).length;
+
+      onUpdate({
+        totalTokens,
+        verifiedTokens,
+        availableGifts,
+        totalWinners,
+        pendingClaims,
+        claimedGifts,
+        demoTestsRun
+      });
+    };
+
+    const unsubTokens = onSnapshot(
+      collection(db, collections.TOKENS),
+      (snap) => {
+        tokensDocs = snap.docs.map(d => d.data());
+        recalculateAndEmit();
+      },
+      (err) => {
+        console.warn('Live tokens metrics listener error:', err);
+        if (onError) onError(err);
+      }
+    );
+
+    const unsubPrizes = onSnapshot(
+      collection(db, collections.PRIZES),
+      (snap) => {
+        prizesDocs = snap.docs.map(d => d.data());
+        recalculateAndEmit();
+      },
+      (err) => {
+        console.warn('Live prizes metrics listener error:', err);
+        if (onError) onError(err);
+      }
+    );
+
+    const unsubWinners = onSnapshot(
+      collection(db, collections.WINNERS),
+      (snap) => {
+        winnersDocs = snap.docs.map(d => d.data());
+        recalculateAndEmit();
+      },
+      (err) => {
+        console.warn('Live winners metrics listener error:', err);
+        if (onError) onError(err);
+      }
+    );
+
+    const unsubClaims = onSnapshot(
+      collection(db, collections.CLAIMS),
+      (snap) => {
+        claimsDocs = snap.docs.map(d => d.data());
+        recalculateAndEmit();
+      },
+      (err) => {
+        console.warn('Live claims metrics listener error:', err);
+        if (onError) onError(err);
+      }
+    );
+
+    return () => {
+      unsubTokens();
+      unsubPrizes();
+      unsubWinners();
+      unsubClaims();
+    };
   }
 }
 

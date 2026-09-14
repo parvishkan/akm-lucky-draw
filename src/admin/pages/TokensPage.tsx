@@ -31,46 +31,100 @@ export const TokensPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<string>('CREATED_DESC');
 
-  // Load tokens from Firestore (Both production and test collections)
+  const mapProdToken = (r: any): TokenItem => ({
+    id: r.tokenId || r.id || 'token',
+    tokenCode: r.tokenCode || r.tokenId,
+    status: (r.status === 'AVAILABLE' ? 'UNUSED' : r.status) as TokenStatus,
+    createdDate: r.createdDate || 'Today',
+    verifiedDate: r.verifiedDate,
+    prizeTitle: r.assignedPrizeName || r.prizeTitle || 'Unassigned (Reveals on Unlock)',
+    claimId: r.claimId,
+    claimStatus: r.claimStatus === 'PENDING' ? 'PENDING' : r.claimStatus === 'CLAIMED' ? 'FULFILLED' : undefined,
+    claimedDate: r.claimedDate,
+    isTest: false
+  });
+
+  const mapTestToken = (r: any): TokenItem => ({
+    id: r.tokenId || r.id || 'test-token',
+    tokenCode: r.tokenCode || r.tokenId,
+    status: (r.status === 'AVAILABLE' ? 'UNUSED' : r.status === 'REDEEMED' ? 'CLAIMED' : r.status) as TokenStatus,
+    createdDate: r.createdDate || 'Today',
+    verifiedDate: r.verifiedDate,
+    prizeTitle: r.prizeTitle || 'Demo Prize (Reveals on Unlock)',
+    claimId: r.claimId,
+    claimStatus: r.claimStatus === 'PENDING' ? 'PENDING' : r.claimStatus === 'CLAIMED' ? 'FULFILLED' : undefined,
+    claimedDate: r.claimedDate,
+    isTest: true
+  });
+
   const loadTokens = async () => {
-    setIsLoading(true);
-    const [prodRecords, testRecords] = await Promise.all([
-      TokensService.getAllTokens(),
-      TokensService.getTestTokens()
-    ]);
-
-    const mappedProd: TokenItem[] = prodRecords.map(r => ({
-      id: r.tokenId || r.id || 'token',
-      tokenCode: r.tokenCode || r.tokenId,
-      status: (r.status === 'AVAILABLE' ? 'UNUSED' : r.status) as TokenStatus,
-      createdDate: r.createdDate || 'Today',
-      verifiedDate: r.verifiedDate,
-      prizeTitle: r.assignedPrizeName || r.prizeTitle || 'Unassigned (Reveals on Unlock)',
-      claimId: r.claimId,
-      claimStatus: r.claimStatus === 'PENDING' ? 'PENDING' : r.claimStatus === 'CLAIMED' ? 'FULFILLED' : undefined,
-      claimedDate: r.claimedDate,
-      isTest: false
-    }));
-
-    const mappedTest: TokenItem[] = testRecords.map(r => ({
-      id: r.tokenId || r.id || 'test-token',
-      tokenCode: r.tokenCode || r.tokenId,
-      status: (r.status === 'AVAILABLE' ? 'UNUSED' : r.status === 'REDEEMED' ? 'CLAIMED' : r.status) as TokenStatus,
-      createdDate: r.createdDate || 'Today',
-      verifiedDate: r.verifiedDate,
-      prizeTitle: r.prizeTitle || 'Demo Prize (Reveals on Unlock)',
-      claimId: r.claimId,
-      claimStatus: r.claimStatus === 'PENDING' ? 'PENDING' : r.claimStatus === 'CLAIMED' ? 'FULFILLED' : undefined,
-      claimedDate: r.claimedDate,
-      isTest: true
-    }));
-
-    setTokens([...mappedProd, ...mappedTest]);
-    setIsLoading(false);
+    try {
+      setIsLoading(true);
+      const [prodRecords, testRecords] = await Promise.all([
+        TokensService.getAllTokens(),
+        TokensService.getTestTokens()
+      ]);
+      setTokens([...prodRecords.map(mapProdToken), ...testRecords.map(mapTestToken)]);
+    } catch (err) {
+      console.warn('loadTokens error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Real-Time Firestore onSnapshot Subscription for Tokens (Both production and test)
   useEffect(() => {
-    loadTokens();
+    setIsLoading(true);
+    let prodList: TokenItem[] = [];
+    let testList: TokenItem[] = [];
+
+    const updateCombined = () => {
+      setTokens([...prodList, ...testList]);
+      setIsLoading(false);
+    };
+
+    const unsubscribeProd = TokensService.subscribeToTokens((prodRecords) => {
+      prodList = prodRecords.map(r => ({
+        id: r.tokenId || r.id || 'token',
+        tokenCode: r.tokenCode || r.tokenId,
+        status: (r.status === 'AVAILABLE' ? 'UNUSED' : r.status) as TokenStatus,
+        createdDate: r.createdDate || 'Today',
+        verifiedDate: r.verifiedDate,
+        prizeTitle: r.assignedPrizeName || r.prizeTitle || 'Unassigned (Reveals on Unlock)',
+        claimId: r.claimId,
+        claimStatus: r.claimStatus === 'PENDING' ? 'PENDING' : r.claimStatus === 'CLAIMED' ? 'FULFILLED' : undefined,
+        claimedDate: r.claimedDate,
+        isTest: false
+      }));
+      updateCombined();
+    }, (err) => {
+      console.warn('TokensPage prod subscription warning:', err);
+      setIsLoading(false);
+    });
+
+    const unsubscribeTest = TokensService.subscribeToTestTokens((testRecords) => {
+      testList = testRecords.map(r => ({
+        id: r.tokenId || r.id || 'test-token',
+        tokenCode: r.tokenCode || r.tokenId,
+        status: (r.status === 'AVAILABLE' ? 'UNUSED' : r.status === 'REDEEMED' ? 'CLAIMED' : r.status) as TokenStatus,
+        createdDate: r.createdDate || 'Today',
+        verifiedDate: r.verifiedDate,
+        prizeTitle: r.prizeTitle || 'Demo Prize (Reveals on Unlock)',
+        claimId: r.claimId,
+        claimStatus: r.claimStatus === 'PENDING' ? 'PENDING' : r.claimStatus === 'CLAIMED' ? 'FULFILLED' : undefined,
+        claimedDate: r.claimedDate,
+        isTest: true
+      }));
+      updateCombined();
+    }, (err) => {
+      console.warn('TokensPage test subscription warning:', err);
+      setIsLoading(false);
+    });
+
+    return () => {
+      unsubscribeProd();
+      unsubscribeTest();
+    };
   }, []);
 
   // Summary Metrics calculation (Filtered by selected Data Scope)

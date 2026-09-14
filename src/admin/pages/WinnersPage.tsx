@@ -8,7 +8,7 @@ import WinnerDetailsPanel from '../components/winners/WinnerDetailsPanel';
 import EmptyState from '../components/winners/EmptyState';
 import LoadingSkeleton from '../components/winners/LoadingSkeleton';
 import { db, collections } from '../../services/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, getDocs } from 'firebase/firestore';
 
 export const formatTimestamp = (value: any, fallback = 'Today'): string => {
   if (!value) return fallback;
@@ -78,42 +78,62 @@ export const WinnersPage: React.FC = () => {
   const [sortBy, setSortBy] = useState('NEWEST');
   const [dataScope, setDataScope] = useState<'ALL' | 'PRODUCTION' | 'TEST'>('ALL');
 
+  const mapWinnerDoc = (d: any): WinnerItem => {
+    const data = d.data();
+    return {
+      id: data.winnerId || d.id,
+      tokenCode: data.tokenCode || data.tokenId || 'AKM-TOKEN',
+      prizeName: data.prizeName || 'Diwali Gift',
+      prizeCategory: data.prizeCategory || 'Diwali Privilege',
+      prizeImage: '/akm-logo.png',
+      isHighValue: data.prizeValue ? String(data.prizeValue).includes('10,000') || String(data.prizeValue).includes('Gold') || String(data.prizeValue).includes('iPhone') : false,
+      wonAt: formatTimestamp(data.wonAt, 'Today'),
+      claimStatus: (data.claimStatus === 'CLAIMED' || data.status === 'CLAIMED') ? 'CLAIMED' : 'PENDING',
+      claimId: data.claimId || `CLM-${d.id.substring(0, 5)}`,
+      claimedAt: data.claimedAt ? formatTimestamp(data.claimedAt, '') : undefined,
+      verifiedBy: data.verifiedBy,
+      staffNotes: data.staffNotes,
+      isTest: data.isTest || false
+    };
+  };
+
   const loadWinners = async () => {
-    setIsLoading(true);
     try {
-      const snap = await getDocs(collection(db, collections.WINNERS));
-      if (!snap.empty) {
-        const items: WinnerItem[] = snap.docs.map(d => {
-          const data = d.data();
-          return {
-            id: data.winnerId || d.id,
-            tokenCode: data.tokenCode || data.tokenId || 'AKM-TOKEN',
-            prizeName: data.prizeName || 'Diwali Gift',
-            prizeCategory: data.prizeCategory || 'Diwali Privilege',
-            prizeImage: '/akm-logo.png',
-            isHighValue: data.prizeValue ? String(data.prizeValue).includes('10,000') || String(data.prizeValue).includes('Gold') || String(data.prizeValue).includes('iPhone') : false,
-            wonAt: formatTimestamp(data.wonAt, 'Today'),
-            claimStatus: (data.claimStatus === 'CLAIMED' || data.status === 'CLAIMED') ? 'CLAIMED' : 'PENDING',
-            claimId: data.claimId || `CLM-${d.id.substring(0, 5)}`,
-            claimedAt: data.claimedAt ? formatTimestamp(data.claimedAt, '') : undefined,
-            verifiedBy: data.verifiedBy,
-            staffNotes: data.staffNotes,
-            isTest: data.isTest || false
-          };
-        });
-        setWinners(items);
+      setIsLoading(true);
+      const snapshot = await getDocs(collection(db, collections.WINNERS));
+      if (!snapshot.empty) {
+        setWinners(snapshot.docs.map(mapWinnerDoc));
       } else {
         setWinners([]);
       }
     } catch (err) {
-      console.warn('Firestore loadWinners error:', err);
-      setWinners([]);
+      console.warn('loadWinners error:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
+  // Real-Time Firestore onSnapshot Subscription for Winners
   useEffect(() => {
-    loadWinners();
+    setIsLoading(true);
+    const colRef = collection(db, collections.WINNERS);
+    const unsubscribe = onSnapshot(
+      colRef,
+      (snap) => {
+        if (!snap.empty) {
+          setWinners(snap.docs.map(mapWinnerDoc));
+        } else {
+          setWinners([]);
+        }
+        setIsLoading(false);
+      },
+      (err) => {
+        console.warn('Firestore live winners onSnapshot error:', err);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   // Summary Metrics (Separates Test from Production Stats)

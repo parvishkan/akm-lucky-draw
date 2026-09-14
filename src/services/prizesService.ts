@@ -10,7 +10,8 @@ import {
   query, 
   where, 
   serverTimestamp,
-  setDoc
+  setDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { Prize, Prizes } from '../data/prizes';
 
@@ -114,6 +115,59 @@ export class PrizesService {
    */
   static async getActivePrizes(): Promise<PrizeDocument[]> {
     return this.ensureDefaultPrizes();
+  }
+
+  /**
+   * Subscribes to real-time prizes updates from Firestore /prizes
+   */
+  static subscribeToActivePrizes(
+    onUpdate: (prizes: PrizeDocument[]) => void,
+    onError?: (err: Error) => void
+  ): () => void {
+    const mapDoc = (d: any): PrizeDocument => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name || data.title || 'Diwali Gift',
+        code: data.code || data.voucherCode || `PRZ-${d.id.substring(0, 4).toUpperCase()}`,
+        totalQuantity: data.totalQuantity ?? data.quantity ?? 100,
+        availableQuantity: data.availableQuantity ?? data.remainingStock ?? 100,
+        quantity: data.totalQuantity ?? data.quantity ?? 100,
+        remainingStock: data.availableQuantity ?? data.remainingStock ?? 100,
+        enabled: data.enabled ?? (data.status === 'ACTIVE'),
+        status: data.status || (data.enabled ? 'ACTIVE' : 'INACTIVE'),
+        title: data.title || data.name || 'Diwali Gift',
+        category: data.category || 'Diwali Privilege',
+        value: data.value || '₹5,000',
+        description: data.description || 'Festive Diwali Prize',
+        voucherCode: data.voucherCode || data.code || 'AKM-VOUCHER',
+        iconName: data.iconName || 'gift',
+        badgeColor: data.badgeColor || 'from-amber-400 to-yellow-600',
+        priority: data.priority || 1,
+        displayOrder: data.displayOrder || 1
+      } as PrizeDocument;
+    };
+
+    const colRef = collection(db, collections.PRIZES);
+    return onSnapshot(
+      colRef,
+      (snapshot) => {
+        if (snapshot.empty) {
+          PrizesService.ensureDefaultPrizes()
+            .then((prizes) => onUpdate(prizes))
+            .catch((err) => {
+              if (onError) onError(err);
+            });
+          return;
+        }
+        const prizes = snapshot.docs.map(mapDoc);
+        onUpdate(prizes);
+      },
+      (err) => {
+        console.warn('PrizesService subscribeToActivePrizes error:', err);
+        if (onError) onError(err);
+      }
+    );
   }
 
   /**

@@ -86,30 +86,44 @@ export const ClaimsPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [dataScope, setDataScope] = useState<'ALL' | 'PRODUCTION' | 'TEST'>('ALL');
 
+  const mapClaimRecord = (r: any): WinnerItem => ({
+    id: r.winnerId || 'WIN-0000',
+    tokenCode: r.tokenCode || r.tokenId || 'AKM-TOKEN',
+    prizeName: r.prizeName || 'Diwali Gift',
+    prizeCategory: 'Diwali Privilege',
+    prizeImage: '/akm-logo.png',
+    isHighValue: r.prizeValue ? String(r.prizeValue).includes('10,000') || String(r.prizeValue).includes('Gold') : false,
+    wonAt: formatTimestamp(r.createdAt, 'Today'),
+    claimStatus: r.claimStatus === 'CLAIMED' ? 'CLAIMED' : 'PENDING',
+    claimId: r.claimId,
+    claimedAt: r.claimedAt ? formatTimestamp(r.claimedAt, '') : undefined,
+    verifiedBy: r.verifiedBy,
+    staffNotes: r.staffNotes,
+    isTest: r.isTest || false
+  });
+
   const loadClaims = async () => {
     setIsLoading(true);
     const records = await ClaimsService.getAllClaims();
-    const mappedItems: WinnerItem[] = records.map(r => ({
-      id: r.winnerId || 'WIN-0000',
-      tokenCode: r.tokenCode || r.tokenId || 'AKM-TOKEN',
-      prizeName: r.prizeName || 'Diwali Gift',
-      prizeCategory: 'Diwali Privilege',
-      prizeImage: '/akm-logo.png',
-      isHighValue: r.prizeValue ? String(r.prizeValue).includes('10,000') || String(r.prizeValue).includes('Gold') : false,
-      wonAt: formatTimestamp(r.createdAt, 'Today'),
-      claimStatus: r.claimStatus === 'CLAIMED' ? 'CLAIMED' : 'PENDING',
-      claimId: r.claimId,
-      claimedAt: r.claimedAt ? formatTimestamp(r.claimedAt, '') : undefined,
-      verifiedBy: r.verifiedBy,
-      staffNotes: r.staffNotes,
-      isTest: r.isTest || false
-    }));
-    setClaims(mappedItems);
+    setClaims(records.map(mapClaimRecord));
     setIsLoading(false);
   };
 
+  // Real-Time Firestore onSnapshot Subscription for Claims
   useEffect(() => {
-    loadClaims();
+    setIsLoading(true);
+    const unsubscribe = ClaimsService.subscribeToClaims(
+      (records) => {
+        setClaims(records.map(mapClaimRecord));
+        setIsLoading(false);
+      },
+      (err) => {
+        console.warn('ClaimsPage live subscription error:', err);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   // Summary Metrics (Separates Test from Production Claims)

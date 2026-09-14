@@ -30,30 +30,43 @@ export const PrizesPage: React.FC = () => {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState('PRIORITY');
 
+  const mapPrizeDocumentToItem = (d: PrizeDocument): PrizeItem => ({
+    id: d.id,
+    name: d.name || d.title,
+    category: (d.category && ['Grand Prize', 'Premium Prize', 'Regular Gift', 'Gift Voucher', 'Merchandise', 'Other'].includes(d.category) ? d.category : 'Regular Gift') as any,
+    image: '/akm-logo.png',
+    totalQuantity: d.totalQuantity ?? d.quantity ?? 100,
+    distributedQuantity: (d.totalQuantity ?? d.quantity ?? 100) - (d.availableQuantity ?? d.remainingStock ?? 50),
+    remainingQuantity: d.availableQuantity ?? d.remainingStock ?? 50,
+    value: d.value || '₹5,000',
+    description: d.description || '',
+    priority: d.priority || 1,
+    status: (d.availableQuantity <= 0 ? 'OUT_OF_STOCK' : d.status) as any,
+    isHighValue: d.value ? d.value.includes('10,000') || d.value.includes('Gold') || d.value.includes('8,500') : false,
+    displayOrder: d.displayOrder || 1
+  });
+
   const loadPrizes = async () => {
     setIsLoading(true);
     const docs = await PrizesService.getActivePrizes();
-    const mappedItems: PrizeItem[] = docs.map(d => ({
-      id: d.id,
-      name: d.name || d.title,
-      category: (d.category && ['Grand Prize', 'Premium Prize', 'Regular Gift', 'Gift Voucher', 'Merchandise', 'Other'].includes(d.category) ? d.category : 'Regular Gift') as any,
-      image: '/akm-logo.png',
-      totalQuantity: d.totalQuantity ?? d.quantity ?? 100,
-      distributedQuantity: (d.totalQuantity ?? d.quantity ?? 100) - (d.availableQuantity ?? d.remainingStock ?? 50),
-      remainingQuantity: d.availableQuantity ?? d.remainingStock ?? 50,
-      value: d.value || '₹5,000',
-      description: d.description || '',
-      priority: d.priority || 1,
-      status: (d.availableQuantity <= 0 ? 'OUT_OF_STOCK' : d.status) as any,
-      isHighValue: d.value ? d.value.includes('10,000') || d.value.includes('Gold') || d.value.includes('8,500') : false,
-      displayOrder: d.displayOrder || 1
-    }));
-    setPrizes(mappedItems);
+    setPrizes(docs.map(mapPrizeDocumentToItem));
     setIsLoading(false);
   };
 
   useEffect(() => {
-    loadPrizes();
+    setIsLoading(true);
+    const unsubscribe = PrizesService.subscribeToActivePrizes(
+      (docs) => {
+        setPrizes(docs.map(mapPrizeDocumentToItem));
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error('Real-time prizes subscription error:', err);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   // Inventory Summary Metrics

@@ -7,7 +7,8 @@ import {
   updateDoc, 
   query, 
   where, 
-  serverTimestamp 
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 
 export interface ClaimItem {
@@ -114,6 +115,49 @@ export class ClaimsService {
       console.warn('Firestore getAllClaims error:', err);
     }
     return [];
+  }
+
+  /**
+   * Subscribe to live claim records from Firestore /claims collection
+   */
+  static subscribeToClaims(
+    onUpdate: (claims: ClaimItem[]) => void,
+    onError?: (err: Error) => void
+  ): () => void {
+    const colRef = collection(db, collections.CLAIMS);
+    return onSnapshot(
+      colRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const items: ClaimItem[] = snapshot.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              claimId: data.claimId || d.id,
+              tokenId: data.tokenId || data.tokenCode || 'AKM-TOKEN',
+              tokenCode: data.tokenCode || data.tokenId || 'AKM-TOKEN',
+              winnerId: data.winnerId || 'WIN-000000',
+              prizeId: data.prizeId || 'prize-1',
+              prizeName: data.prizeName || 'Diwali Gift',
+              prizeValue: data.prizeValue || '₹5,000',
+              claimStatus: data.claimStatus || data.status || 'PENDING',
+              createdAt: formatTimestamp(data.createdAt, 'Today'),
+              claimedAt: data.claimedAt ? formatTimestamp(data.claimedAt, '') : undefined,
+              verifiedBy: data.verifiedBy,
+              staffNotes: data.staffNotes,
+              isTest: data.isTest || false
+            } as ClaimItem;
+          });
+          onUpdate(items);
+        } else {
+          onUpdate([]);
+        }
+      },
+      (err) => {
+        console.warn('Firestore claims onSnapshot error:', err);
+        if (onError) onError(err);
+      }
+    );
   }
 
   /**

@@ -51,13 +51,19 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
   });
 
   useEffect(() => {
-    async function loadData() {
-      setIsLoading(true);
-      const data = await DashboardService.getLiveMetrics();
-      setMetrics(data);
-      setIsLoading(false);
-    }
-    loadData();
+    setIsLoading(true);
+    const unsubscribe = DashboardService.subscribeToLiveMetrics(
+      (data) => {
+        setMetrics(data);
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error('Failed to subscribe to live dashboard metrics:', err);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   // 1. Statistics Cards Data (6 Cards connected to Firestore)

@@ -8,6 +8,7 @@ import {
   query, 
   where, 
   getDocs, 
+  onSnapshot,
   serverTimestamp,
   writeBatch,
   deleteDoc
@@ -70,6 +71,52 @@ export class TokensService {
       console.warn('Firestore getAllTokens warning:', err);
     }
     return [];
+  }
+
+  /**
+   * Subscribe to live tokens from Firestore /tokens collection
+   */
+  static subscribeToTokens(
+    onUpdate: (tokens: TokenRecord[]) => void,
+    onError?: (err: Error) => void
+  ): () => void {
+    const colRef = collection(db, collections.TOKENS);
+    return onSnapshot(
+      colRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const items: TokenRecord[] = snapshot.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              tokenId: data.tokenId || d.id,
+              tokenCode: data.tokenCode || data.tokenId || d.id,
+              campaignId: data.campaignId || 'akm-diwali-2026',
+              slotId: data.slotId || 'slot-day1-morning',
+              status: data.status || 'AVAILABLE',
+              assignedPrizeId: data.assignedPrizeId,
+              assignedPrizeName: data.assignedPrizeName || data.prizeTitle,
+              prizeTitle: data.assignedPrizeName || data.prizeTitle,
+              createdAt: data.createdAt,
+              createdDate: data.createdDate || (data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString('en-GB') : 'Today'),
+              verifiedAt: data.verifiedAt,
+              verifiedDate: data.verifiedDate,
+              winnerId: data.winnerId,
+              claimId: data.claimId,
+              claimStatus: data.claimStatus,
+              claimedDate: data.claimedDate
+            } as TokenRecord;
+          });
+          onUpdate(items);
+        } else {
+          onUpdate([]);
+        }
+      },
+      (err) => {
+        console.warn('Firestore tokens onSnapshot error:', err);
+        if (onError) onError(err);
+      }
+    );
   }
 
   /**
@@ -400,6 +447,50 @@ export class TokensService {
       console.warn('Firestore getTestTokens error:', err);
     }
     return [];
+  }
+
+  /**
+   * Subscribe to live test tokens from /testTokens
+   */
+  static subscribeToTestTokens(
+    onUpdate: (tokens: TokenRecord[]) => void,
+    onError?: (err: Error) => void
+  ): () => void {
+    const colRef = collection(db, collections.TEST_TOKENS);
+    return onSnapshot(
+      colRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const items: TokenRecord[] = snapshot.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              tokenId: data.tokenId || d.id,
+              tokenCode: data.tokenCode || data.tokenId || d.id,
+              campaignId: 'DEMO-MODE',
+              slotId: 'demo-slot',
+              status: data.status || 'AVAILABLE',
+              assignedPrizeName: data.prizeTitle || 'Demo Prize (Reveals on Unlock)',
+              prizeTitle: data.prizeTitle || 'Demo Prize (Reveals on Unlock)',
+              createdAt: data.createdAt,
+              createdDate: data.createdDate || 'Today',
+              verifiedAt: data.redeemedAt,
+              winnerId: data.winnerId,
+              claimId: data.claimId,
+              claimStatus: data.claimStatus,
+              isTest: true
+            } as TokenRecord;
+          });
+          onUpdate(items);
+        } else {
+          onUpdate([]);
+        }
+      },
+      (err) => {
+        console.warn('Firestore testTokens onSnapshot error:', err);
+        if (onError) onError(err);
+      }
+    );
   }
 
   /**
