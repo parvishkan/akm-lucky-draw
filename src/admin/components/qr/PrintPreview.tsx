@@ -1,7 +1,7 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, X, Sparkles } from 'lucide-react';
-import { APP_CONFIG } from '../../../constants/appConfig';
+import { Printer, X } from 'lucide-react';
+import { APP_CONFIG, CAMPAIGN_BASE_URL } from '../../../constants/appConfig';
 
 interface PrintPreviewProps {
   isOpen: boolean;
@@ -11,19 +11,64 @@ interface PrintPreviewProps {
 export const PrintPreview: React.FC<PrintPreviewProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  const campaignUrl = APP_CONFIG.brand.productionUrl || 'https://draw.anukrishnamall.in';
+  const campaignUrl = CAMPAIGN_BASE_URL || APP_CONFIG.brand.productionUrl;
 
   const handleTriggerPrint = () => {
     window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none font-sans overflow-y-auto">
-      <div className="bg-[#1D0636] border-2 border-[#FFD700]/50 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-left space-y-6 shadow-2xl relative my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none font-sans overflow-y-auto print:p-0 print:bg-white print:static">
+      {/* Dedicated Print Media Styles to isolate ONLY the A4 poster */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+          html, body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-qr-poster, #printable-qr-poster * {
+            visibility: visible !important;
+          }
+          #printable-qr-poster {
+            position: fixed !important;
+            left: 50% !important;
+            top: 0 !important;
+            transform: translateX(-50%) !important;
+            width: 100% !important;
+            max-width: 190mm !important;
+            margin: 0 auto !important;
+            padding: 14mm 12mm !important;
+            box-sizing: border-box !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            border: 4px solid #000000 !important;
+            border-radius: 16px !important;
+            box-shadow: none !important;
+            z-index: 9999999 !important;
+            page-break-inside: avoid !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div className="bg-[#1D0636] border-2 border-[#FFD700]/50 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-left space-y-6 shadow-2xl relative my-8 print:border-none print:p-0 print:m-0 print:bg-transparent print:shadow-none">
         
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-xl bg-[#0D021A] text-[#A0A0A0] hover:text-white border border-[#FFD700]/20"
+          className="no-print absolute top-4 right-4 p-1.5 rounded-xl bg-[#0D021A] text-[#A0A0A0] hover:text-white border border-[#FFD700]/20 cursor-pointer transition-colors"
+          title="Close Preview"
         >
           <X className="w-4 h-4" />
         </button>
@@ -55,17 +100,18 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ isOpen, onClose }) =
           <div className="p-4 bg-white rounded-2xl border-4 border-black inline-block shadow-2xl">
             <QRCodeSVG
               value={campaignUrl}
-              size={240}
+              size={260}
               bgColor="#FFFFFF"
               fgColor="#000000"
               level="H"
               includeMargin={true}
+              marginSize={3}
               imageSettings={{
                 src: APP_CONFIG.brand.logoPath,
                 x: undefined,
                 y: undefined,
-                height: 48,
-                width: 48,
+                height: 52,
+                width: 52,
                 excavate: true,
               }}
             />
@@ -91,18 +137,18 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ isOpen, onClose }) =
 
         </div>
 
-        {/* Modal Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        {/* Modal Buttons - Hidden during print */}
+        <div className="no-print flex items-center justify-end gap-3 pt-2">
           <button
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-[#0D021A] border border-[#FFD700]/20 text-[#A0A0A0] hover:text-white text-xs font-bold"
+            className="px-4 py-2.5 rounded-xl bg-[#0D021A] border border-[#FFD700]/20 text-[#A0A0A0] hover:text-white text-xs font-bold cursor-pointer transition-colors"
           >
             Close
           </button>
 
           <button
             onClick={handleTriggerPrint}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#FFD700] via-[#D4AF37] to-[#FFD700] text-[#0D021A] font-extrabold text-xs tracking-widest uppercase flex items-center gap-2 shadow-lg cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#FFD700] via-[#D4AF37] to-[#FFD700] text-[#0D021A] font-extrabold text-xs tracking-widest uppercase flex items-center gap-2 shadow-lg cursor-pointer hover:opacity-95 transition-all"
           >
             <Printer className="w-4 h-4 text-[#0D021A]" />
             <span>🖨 Print A4 Counter Poster</span>

@@ -33,6 +33,7 @@ function getDb() {
 // Approved CORS Origins whitelist
 const ALLOWED_ORIGINS = new Set([
   'https://akm-lucky-draw.vercel.app',
+  'https://draw.anukrishnamall.in',
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:4173',
