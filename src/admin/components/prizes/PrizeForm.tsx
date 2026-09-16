@@ -19,9 +19,11 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
   onClose,
   onSave
 }) => {
+  const sanitizeImage = (img?: string | null) => (img && img !== '/akm-logo.png' && !img.endsWith('/akm-logo.png') ? img : '');
+
   const [name, setName] = useState('');
   const [category, setCategory] = useState<PrizeItem['category']>('Grand Prize');
-  const [image, setImage] = useState('/akm-logo.png');
+  const [image, setImage] = useState('');
   const [totalQuantity, setTotalQuantity] = useState(10);
   const [value, setValue] = useState('₹5,000');
   const [description, setDescription] = useState('');
@@ -45,7 +47,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
     if (prizeToEdit) {
       setName(prizeToEdit.name);
       setCategory(prizeToEdit.category);
-      setImage(prizeToEdit.image || '/akm-logo.png');
+      setImage(sanitizeImage(prizeToEdit.image));
       setTotalQuantity(prizeToEdit.totalQuantity);
       setValue(prizeToEdit.value);
       setDescription(prizeToEdit.description);
@@ -57,7 +59,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
     } else {
       setName('');
       setCategory('Grand Prize');
-      setImage('/akm-logo.png');
+      setImage('');
       setTotalQuantity(10);
       setValue('₹5,000');
       setDescription('');
@@ -162,8 +164,13 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Image Upload Placeholder UI */}
-          <PrizeImageUpload imagePath={image} onImageChange={setImage} />
+          {/* Row 2: Product Image Upload with native file picker & 5MB validation */}
+          <PrizeImageUpload
+            imagePath={image}
+            prizeId={prizeToEdit?.id}
+            prizeName={prizeToEdit?.name || name}
+            onImageChange={setImage}
+          />
 
           {/* Row 3: Total Quantity & Value */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

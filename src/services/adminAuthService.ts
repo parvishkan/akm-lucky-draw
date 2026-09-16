@@ -1,6 +1,8 @@
 import { auth, db, collections } from './firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import { DeviceSessionService } from './deviceSessionService';
+import { ActivityLogger } from './activityLogger';
 
 export interface AdminProfile {
   uid: string;
@@ -33,18 +35,41 @@ export class AdminAuthService {
   }
 
   /**
-   * Performs Firebase Auth login followed by strict Admin Authorization check.
+   * Performs Firebase Auth login followed by strict Admin Authorization and Device Registration check.
    */
   static async login(email: string, password: string): Promise<{ success: boolean; user?: User; profile?: AdminProfile; error?: string }> {
     try {
       const res = await signInWithEmailAndPassword(auth, email, password);
       const authCheck = await this.verifyAdminAuthorization(res.user);
 
-      if (!authCheck.isAuthorized) {
+      if (!authCheck.isAuthorized || !authCheck.profile) {
         await signOut(auth);
         return {
           success: false,
           error: 'Access Denied: Your account is authenticated but does not possess active administrative privileges.'
+        };
+      }
+
+      // Register or verify device session
+      try {
+        const { sessionRecord, isMaster } = await DeviceSessionService.registerCurrentSession(authCheck.profile);
+        
+        await ActivityLogger.log(
+          'LOGIN',
+          `Admin logged in (${authCheck.profile.email}) [${sessionRecord.deviceInfo.deviceName}]`,
+          authCheck.profile.email,
+          {
+            actorUid: res.user.uid,
+            targetDeviceId: sessionRecord.deviceId,
+            module: 'Authentication',
+            details: isMaster ? 'Master Owner Device authenticated' : 'Staff device session authenticated'
+          }
+        );
+      } catch (sessionErr: any) {
+        await signOut(auth);
+        return {
+          success: false,
+          error: sessionErr?.message || 'Access Denied: Session revoked or device blocked.'
         };
       }
 

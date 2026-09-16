@@ -85,7 +85,7 @@ export const WinnersPage: React.FC = () => {
       tokenCode: data.tokenCode || data.tokenId || 'AKM-TOKEN',
       prizeName: data.prizeName || 'Diwali Gift',
       prizeCategory: data.prizeCategory || 'Diwali Privilege',
-      prizeImage: '/akm-logo.png',
+      prizeImage: (data.prizeImage && data.prizeImage !== '/akm-logo.png') ? data.prizeImage : ((data.image && data.image !== '/akm-logo.png') ? data.image : ((data.imageUrl && data.imageUrl !== '/akm-logo.png') ? data.imageUrl : '')),
       isHighValue: data.prizeValue ? String(data.prizeValue).includes('10,000') || String(data.prizeValue).includes('Gold') || String(data.prizeValue).includes('iPhone') : false,
       wonAt: formatTimestamp(data.wonAt, 'Today'),
       claimStatus: (data.claimStatus === 'CLAIMED' || data.status === 'CLAIMED') ? 'CLAIMED' : 'PENDING',

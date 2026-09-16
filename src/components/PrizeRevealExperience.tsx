@@ -1,17 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Trophy, ArrowRight, Award, Gift } from 'lucide-react';
+import { Sparkles, Trophy, ArrowRight, Award } from 'lucide-react';
 import { Prize } from '../data/prizes';
+import PrizeProductVisual from './PrizeProductVisual';
 
 interface PrizeRevealExperienceProps {
   boxId: number;
   prize: Prize;
+  claimId?: string;
   onClaimClick: () => void;
 }
 
 export const PrizeRevealExperience: React.FC<PrizeRevealExperienceProps> = ({
   boxId,
   prize,
+  claimId,
   onClaimClick
 }) => {
 
@@ -58,11 +61,11 @@ export const PrizeRevealExperience: React.FC<PrizeRevealExperienceProps> = ({
       >
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-akm-gold-royal/15 border border-akm-gold-royal/40 text-akm-gold-light text-xs font-semibold uppercase tracking-widest shadow-gold-glow">
           <Trophy className="w-3.5 h-3.5 text-akm-gold-royal" />
-          <span>Congratulations Winner!</span>
+          <span>🎁 YOU WON</span>
         </div>
 
-        <h2 className="font-heading text-2xl sm:text-3xl font-bold text-gold-metallic">
-          You Won {prize.title}!
+        <h2 className="font-heading text-2xl sm:text-3xl font-extrabold text-gold-metallic tracking-wide uppercase">
+          {prize.title}
         </h2>
 
         <p className="text-xs text-gray-300 font-sans max-w-xs mx-auto leading-relaxed">
@@ -70,7 +73,7 @@ export const PrizeRevealExperience: React.FC<PrizeRevealExperienceProps> = ({
         </p>
       </motion.div>
 
-      {/* 2. Prize Card Presentation (Smooth Scale 0.85 -> 1.0) */}
+      {/* 2. Prize Card Presentation with Large Product Visual */}
       <motion.div
         initial={{ opacity: 0, scale: 0.85, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -79,20 +82,20 @@ export const PrizeRevealExperience: React.FC<PrizeRevealExperienceProps> = ({
       >
         <div className="absolute top-0 inset-x-0 h-[2px] bg-gold-metallic" />
 
-        {/* Prize Icon Badge Container */}
-        <div className="relative w-28 h-28 sm:w-36 sm:h-36 mx-auto rounded-2xl bg-[#07020E] border border-akm-gold-royal/30 p-3 shadow-inner flex flex-col items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 bg-akm-gold-royal/10 blur-xl pointer-events-none" />
-          <Gift className="w-14 h-14 text-akm-gold-royal drop-shadow-2xl relative z-10" />
+        {/* Large Prominent Prize Product Visual */}
+        <div className="relative w-44 h-44 sm:w-52 sm:h-52 mx-auto rounded-3xl bg-[#07020E] border border-akm-gold-royal/40 p-4 shadow-[0_0_30px_rgba(255,215,0,0.18)] flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-akm-gold-royal/15 via-transparent to-akm-gold-royal/5 pointer-events-none" />
+          <PrizeProductVisual prize={prize} size="hero" alt={prize.title} />
         </div>
 
         {/* Prize Details & Value */}
-        <div className="space-y-1 text-center">
+        <div className="space-y-1.5 text-center">
           <div className="inline-flex items-center gap-1 text-[11px] font-bold text-akm-gold-royal bg-akm-purple-deepest px-3 py-1 rounded-full border border-akm-gold-royal/30 uppercase tracking-wider">
             <Award className="w-3.5 h-3.5 text-akm-gold-royal" />
             <span>Worth {prize.value}</span>
           </div>
 
-          <h3 className="font-heading text-lg font-bold text-white pt-1">
+          <h3 className="font-heading text-2xl sm:text-3xl font-extrabold text-white pt-1 tracking-wide uppercase">
             {prize.title}
           </h3>
 
@@ -100,6 +103,23 @@ export const PrizeRevealExperience: React.FC<PrizeRevealExperienceProps> = ({
             {prize.description}
           </p>
         </div>
+
+        {/* Claim ID & Physical Collection Instruction */}
+        {claimId && (
+          <div className="pt-2 border-t border-akm-gold-royal/20 space-y-2 text-center">
+            <div className="p-3 rounded-2xl bg-[#07020E] border border-akm-gold-royal/40 space-y-1 shadow-[0_0_15px_rgba(255,215,0,0.1)]">
+              <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">
+                Redemption Claim ID
+              </span>
+              <span className="font-mono text-xl font-black text-akm-gold-royal tracking-widest block">
+                {claimId}
+              </span>
+            </div>
+            <p className="text-xs text-amber-200/95 font-medium leading-relaxed">
+              Show this Claim ID at the counter to collect your gift.
+            </p>
+          </div>
+        )}
       </motion.div>
 
       {/* 3. Primary CTA: Claim My Prize Button */}

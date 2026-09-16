@@ -249,6 +249,11 @@ export const TokensPage: React.FC = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    // Use full production tokens list, strictly excluding test tokens
+    const tokensToPrint = (searchTerm.trim() || selectedStatus !== 'ALL')
+      ? filteredTokens.filter((t) => !t.isTest)
+      : tokens.filter((t) => !t.isTest);
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -259,7 +264,7 @@ export const TokensPage: React.FC = () => {
             h2 { text-align: center; margin-bottom: 5px; }
             p { text-align: center; font-size: 12px; margin-bottom: 20px; }
             .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-            .token-card { border: 1px dashed #000; padding: 10px; text-align: center; border-radius: 6px; }
+            .token-card { border: 1px dashed #000; padding: 10px; text-align: center; border-radius: 6px; page-break-inside: avoid; }
             .code { font-size: 16px; font-weight: bold; }
             .sub { font-size: 9px; color: #555; margin-top: 4px; }
             @media print {
@@ -273,9 +278,9 @@ export const TokensPage: React.FC = () => {
             <button onclick="window.print()" style="padding: 8px 16px; background: #000; color: #fff; border: none; cursor: pointer; border-radius: 4px;">Print Tokens Sheet</button>
           </div>
           <h2>ANU KRISHNA MALL - LUCKY DRAW TOKENS</h2>
-          <p>Generated: ${new Date().toLocaleDateString()} | Total Tokens: ${filteredTokens.length}</p>
+          <p>Generated: ${new Date().toLocaleDateString()} | Total Tokens: ${tokensToPrint.length}</p>
           <div class="grid">
-            ${filteredTokens.map(t => `
+            ${tokensToPrint.map(t => `
               <div class="token-card">
                 <div class="code">${t.tokenCode}</div>
                 <div class="sub">AKM Official Receipt Token</div>

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Settings, Users, Shield, Clock, PlusCircle } from 'lucide-react';
+import { Settings, Users, Shield, Clock, PlusCircle, Laptop } from 'lucide-react';
 import StaffStats from '../components/staff/StaffStats';
 import StaffTable, { StaffItem } from '../components/staff/StaffTable';
 import StaffForm from '../components/staff/StaffForm';
 import PermissionMatrix from '../components/staff/PermissionMatrix';
 import ActivityLogs from '../components/staff/ActivityLogs';
 import ConfirmationModal from '../components/qr/ConfirmationModal';
+import DeviceSessionManagement from '../components/staff/DeviceSessionManagement';
 
 const initialMockStaff: StaffItem[] = [
-  { id: 'usr-1', name: 'Anu Krishna Executive', email: 'owner@anukrishnamall.com', role: 'OWNER', status: 'ACTIVE', lastActive: 'Just Now' },
+  { id: 'usr-1', name: 'Farvish (Master Owner)', email: 'farvishedits@gmail.com', role: 'OWNER', status: 'ACTIVE', lastActive: 'Just Now' },
   { id: 'usr-2', name: 'Arun Kumar', email: 'arun@anukrishnamall.com', role: 'ADMIN', status: 'ACTIVE', lastActive: '5 mins ago' },
   { id: 'usr-3', name: 'Priya Sharma', email: 'priya@anukrishnamall.com', role: 'MANAGER', status: 'ACTIVE', lastActive: '12 mins ago' },
   { id: 'usr-4', name: 'Staff Counter #1', email: 'counter1@anukrishnamall.com', role: 'STAFF', status: 'ACTIVE', lastActive: '2 mins ago' },
@@ -17,7 +18,7 @@ const initialMockStaff: StaffItem[] = [
 ];
 
 export const SettingsPage: React.FC = () => {
-  const [activeSubTab, setActiveSubTab] = useState<'STAFF' | 'MATRIX' | 'LOGS'>('STAFF');
+  const [activeSubTab, setActiveSubTab] = useState<'STAFF' | 'MATRIX' | 'LOGS' | 'DEVICES'>('STAFF');
   const [staffList, setStaffList] = useState<StaffItem[]>(initialMockStaff);
   const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
   const [staffToEdit, setStaffToEdit] = useState<StaffItem | null>(null);
@@ -122,6 +123,18 @@ export const SettingsPage: React.FC = () => {
           <Clock className="w-4 h-4" />
           <span>📜 System Activity Logs</span>
         </button>
+
+        <button
+          onClick={() => setActiveSubTab('DEVICES')}
+          className={`px-4 py-2 rounded-xl font-sans text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeSubTab === 'DEVICES'
+              ? 'bg-[#FFD700] text-[#0D021A] shadow-gold-glow'
+              : 'bg-[#1D0636] text-[#A0A0A0] hover:text-white border border-[#FFD700]/20'
+          }`}
+        >
+          <Laptop className="w-4 h-4" />
+          <span>💻 Device & Session Management</span>
+        </button>
       </div>
 
       {/* 3. Sub-Tab Content Rendering */}
@@ -135,6 +148,8 @@ export const SettingsPage: React.FC = () => {
       {activeSubTab === 'MATRIX' && <PermissionMatrix />}
 
       {activeSubTab === 'LOGS' && <ActivityLogs />}
+
+      {activeSubTab === 'DEVICES' && <DeviceSessionManagement />}
 
       {/* Add / Edit Staff Modal */}
       <StaffForm

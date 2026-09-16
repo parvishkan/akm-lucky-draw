@@ -91,7 +91,7 @@ export const ClaimsPage: React.FC = () => {
     tokenCode: r.tokenCode || r.tokenId || 'AKM-TOKEN',
     prizeName: r.prizeName || 'Diwali Gift',
     prizeCategory: 'Diwali Privilege',
-    prizeImage: '/akm-logo.png',
+    prizeImage: (r.prizeImage && r.prizeImage !== '/akm-logo.png') ? r.prizeImage : ((r.image && r.image !== '/akm-logo.png') ? r.image : ((r.imageUrl && r.imageUrl !== '/akm-logo.png') ? r.imageUrl : '')),
     isHighValue: r.prizeValue ? String(r.prizeValue).includes('10,000') || String(r.prizeValue).includes('Gold') : false,
     wonAt: formatTimestamp(r.createdAt, 'Today'),
     claimStatus: r.claimStatus === 'CLAIMED' ? 'CLAIMED' : 'PENDING',

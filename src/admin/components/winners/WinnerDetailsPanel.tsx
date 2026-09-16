@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Trophy, Ticket, Gift, Star, Clock, User, ShieldCheck } from 'lucide-react';
 import { WinnerItem } from './WinnerTable';
 import ClaimStatusBadge from './ClaimStatusBadge';
+import PrizeProductVisual from '../../../components/PrizeProductVisual';
 
 interface WinnerDetailsPanelProps {
   winner: WinnerItem | null;
@@ -110,8 +111,8 @@ export const WinnerDetailsPanel: React.FC<WinnerDetailsPanelProps> = ({ winner, 
             Allocated Gift Details
           </span>
           <div className="flex items-center gap-3 pt-1">
-            <div className="w-12 h-12 rounded-xl bg-[#1D0636] border border-[#FFD700]/30 p-1 flex items-center justify-center shrink-0">
-              <img src={winner.prizeImage || '/akm-logo.png'} alt={winner.prizeName} className="w-full h-full object-contain" />
+            <div className="w-12 h-12 rounded-xl bg-[#1D0636] border border-[#FFD700]/30 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+              <PrizeProductVisual prize={{ name: winner.prizeName, image: winner.prizeImage }} size="sm" alt={winner.prizeName} />
             </div>
             <div>
               <span className="font-bold text-white text-sm block">{winner.prizeName}</span>

@@ -4,6 +4,7 @@ import { ShieldCheck, QrCode, Download, CheckCircle2, Building2 } from 'lucide-r
 import { TokenVerificationData } from '../types';
 import { Prize } from '../data/prizes';
 import { APP_CONFIG } from '../constants/appConfig';
+import PrizeProductVisual from './PrizeProductVisual';
 
 interface PrizeClaimExperienceProps {
   tokenData: TokenVerificationData;
@@ -102,14 +103,21 @@ export const PrizeClaimExperience: React.FC<PrizeClaimExperienceProps> = ({
           </span>
         </div>
 
+        <p className="text-xs text-amber-200/90 font-medium text-center">
+          Show this Claim ID at the counter to collect your gift.
+        </p>
+
         {/* Prize & Winner Data Grid */}
         <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-          <div className="p-2.5 rounded-xl bg-akm-purple-deepest border border-akm-gold-royal/20 space-y-0.5">
-            <span className="text-[9px] text-gray-400 uppercase block">Won Reward</span>
-            <span className="font-bold text-white block truncate">{prize.title}</span>
+          <div className="p-2.5 rounded-xl bg-akm-purple-deepest border border-akm-gold-royal/20 flex items-center gap-2">
+            <PrizeProductVisual prize={prize} size="xs" className="shrink-0" />
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <span className="text-[9px] text-gray-400 uppercase block">Won Reward</span>
+              <span className="font-bold text-white block truncate">{prize.title}</span>
+            </div>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-akm-purple-deepest border border-akm-gold-royal/20 space-y-0.5">
+          <div className="p-2.5 rounded-xl bg-akm-purple-deepest border border-akm-gold-royal/20 space-y-0.5 flex flex-col justify-center">
             <span className="text-[9px] text-gray-400 uppercase block">Token Code</span>
             <span className="font-mono font-bold text-akm-gold-royal block">{tokenData.tokenCode}</span>
           </div>

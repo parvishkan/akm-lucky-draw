@@ -11,6 +11,7 @@ import DeleteConfirmationModal from '../components/prizes/DeleteConfirmationModa
 import EmptyState from '../components/prizes/EmptyState';
 import LoadingSkeleton from '../components/prizes/LoadingSkeleton';
 import { PrizesService, PrizeDocument } from '../../services/prizesService';
+import { getPrizeImageUrl } from '../../utils/prizeImages';
 
 export const PrizesPage: React.FC = () => {
   const [prizes, setPrizes] = useState<PrizeItem[]>([]);
@@ -34,7 +35,7 @@ export const PrizesPage: React.FC = () => {
     id: d.id,
     name: d.name || d.title,
     category: (d.category && ['Grand Prize', 'Premium Prize', 'Regular Gift', 'Gift Voucher', 'Merchandise', 'Other'].includes(d.category) ? d.category : 'Regular Gift') as any,
-    image: '/akm-logo.png',
+    image: getPrizeImageUrl(d),
     totalQuantity: d.totalQuantity ?? d.quantity ?? 100,
     distributedQuantity: (d.totalQuantity ?? d.quantity ?? 100) - (d.availableQuantity ?? d.remainingStock ?? 50),
     remainingQuantity: d.availableQuantity ?? d.remainingStock ?? 50,
@@ -118,6 +119,10 @@ export const PrizesPage: React.FC = () => {
 
   const handleSavePrize = async (data: Partial<PrizeItem>) => {
     setIsLoading(true);
+    const sanitizedImage = data.image && data.image !== '/akm-logo.png' && !data.image.endsWith('/akm-logo.png')
+      ? data.image.trim()
+      : null;
+
     if (data.id) {
       // Update in Firestore
       await PrizesService.updatePrize(data.id, {
@@ -128,7 +133,9 @@ export const PrizesPage: React.FC = () => {
         value: data.value,
         category: data.category,
         description: data.description,
-        slotId: data.slotId
+        slotId: data.slotId,
+        image: sanitizedImage,
+        imageUrl: sanitizedImage
       });
     } else {
       // Add in Firestore
@@ -136,12 +143,14 @@ export const PrizesPage: React.FC = () => {
         name: data.name || 'Diwali Gift',
         title: data.name || 'Diwali Gift',
         code: `PRZ-${Math.floor(100 + Math.random() * 900)}`,
-        totalQuantity: data.totalQuantity || 50,
-        availableQuantity: data.totalQuantity || 50,
+        totalQuantity: data.totalQuantity || 100,
+        availableQuantity: data.totalQuantity || 100,
         value: data.value || '₹2,500',
         category: data.category || 'Festive Gift',
         description: data.description || 'Diwali Lucky Draw Prize',
-        slotId: data.slotId
+        slotId: data.slotId,
+        image: sanitizedImage,
+        imageUrl: sanitizedImage
       });
     }
 

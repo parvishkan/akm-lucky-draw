@@ -6,6 +6,8 @@ import { AdminAuthService, AdminProfile } from './services/adminAuthService';
 import { User } from 'firebase/auth';
 import { Shield, Sparkles } from 'lucide-react';
 
+import { DeviceSessionService } from './services/deviceSessionService';
+
 export const App: React.FC = () => {
   const [pathname, setPathname] = useState<string>(window.location.pathname);
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -28,9 +30,18 @@ export const App: React.FC = () => {
       if (user) {
         setAuthUser(user);
         const check = await AdminAuthService.verifyAdminAuthorization(user);
-        if (check.isAuthorized) {
-          setIsAuthorizedAdmin(true);
-          setAdminProfile(check.profile || null);
+        if (check.isAuthorized && check.profile) {
+          try {
+            await DeviceSessionService.registerCurrentSession(check.profile);
+            setIsAuthorizedAdmin(true);
+            setAdminProfile(check.profile);
+          } catch (sessionErr: any) {
+            console.warn('Session verification failed:', sessionErr);
+            alert(sessionErr?.message || 'Access Denied: Session revoked or invalid.');
+            await AdminAuthService.logout();
+            setIsAuthorizedAdmin(false);
+            setAdminProfile(null);
+          }
         } else {
           setIsAuthorizedAdmin(false);
           setAdminProfile(null);
@@ -44,6 +55,25 @@ export const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  // Active Session Revocation Listener & Heartbeat
+  useEffect(() => {
+    if (!authUser || !isAuthorizedAdmin) return;
+
+    const unsubscribeSession = DeviceSessionService.listenToCurrentSession(authUser.uid, async () => {
+      alert('⚠️ Access Revoked: Your administrative session has been revoked by the Master Owner.');
+      await handleLogout();
+    });
+
+    const heartbeatInterval = setInterval(() => {
+      DeviceSessionService.sendHeartbeat(authUser.uid);
+    }, 2 * 60 * 1000);
+
+    return () => {
+      unsubscribeSession();
+      clearInterval(heartbeatInterval);
+    };
+  }, [authUser, isAuthorizedAdmin]);
 
   const isAdminRoute = pathname.startsWith('/admin');
 

@@ -23,6 +23,7 @@ export class collections {
   static readonly CAMPAIGNS = 'campaigns';
   static readonly TIME_SLOTS = 'timeSlots';
   static readonly TEST_TOKENS = 'testTokens';
+  static readonly ADMIN_SESSIONS = 'adminSessions';
 }
 
 export default app;

@@ -45,7 +45,9 @@ export class AllocationEngine {
           description: p.description || '',
           voucherCode: data.claimId,
           iconName: 'gift',
-          badgeColor: 'from-amber-400 to-yellow-600'
+          badgeColor: 'from-amber-400 to-yellow-600',
+          image: p.image || p.imageUrl || null,
+          imageUrl: p.imageUrl || p.image || null
         };
 
         return { prize: prizeObject, claimId: data.claimId };

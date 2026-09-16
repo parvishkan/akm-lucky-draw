@@ -287,6 +287,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
             <PrizeRevealExperience
               boxId={selectedBoxId}
               prize={wonPrize}
+              claimId={claimId}
               onClaimClick={handleClaimClick}
             />
           </motion.div>

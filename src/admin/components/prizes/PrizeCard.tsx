@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Star, Edit3, Eye, Trash2, AlertTriangle, Gift } from 'lucide-react';
 import PrizeStatusBadge, { PrizeStatus } from './PrizeStatusBadge';
 import InventoryProgress from './InventoryProgress';
+import PrizeProductVisual from '../../../components/PrizeProductVisual';
 
 export interface PrizeItem {
   id: string;
@@ -65,12 +66,8 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
 
       {/* Prize Visual Container & Title */}
       <div className="space-y-3">
-        <div className="relative w-full h-32 rounded-2xl bg-[#0D021A] border border-[#FFD700]/20 p-3 flex items-center justify-center overflow-hidden">
-          {prize.image ? (
-            <img src={prize.image} alt={prize.name} className="w-full h-full object-contain drop-shadow-md" />
-          ) : (
-            <Gift className="w-12 h-12 text-[#FFD700]" />
-          )}
+        <div className="relative w-full h-32 rounded-2xl bg-[#0D021A] border border-[#FFD700]/20 p-2 flex items-center justify-center overflow-hidden">
+          <PrizeProductVisual prize={prize} size="md" alt={prize.name} />
         </div>
 
         <div className="space-y-1">

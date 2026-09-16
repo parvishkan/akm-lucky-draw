@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Eye, Search, ShieldCheck } from 'lucide-react';
 import ActivityLogDetails from './ActivityLogDetails';
+import { db, collections } from '../../../services/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 export interface ActivityLogItem {
   id: string;
@@ -27,6 +29,41 @@ export const ActivityLogs: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<ActivityLogItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModule, setSelectedModule] = useState('ALL');
+
+  useEffect(() => {
+    const colRef = collection(db, collections.ACTIVITY_LOGS);
+    const unsubscribe = onSnapshot(colRef, (snap) => {
+      if (!snap.empty) {
+        const liveItems: ActivityLogItem[] = snap.docs.map((d) => {
+          const data = d.data();
+          let timeStr = 'Today';
+          if (data.timestamp?.toDate) {
+            try {
+              timeStr = data.timestamp.toDate().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+            } catch {
+              timeStr = 'Today';
+            }
+          }
+          return {
+            id: d.id,
+            time: timeStr,
+            user: data.user || data.actorEmail || 'Admin',
+            action: data.title || data.type || 'Action',
+            module: data.module || 'Security',
+            status: data.status || 'SUCCESS',
+            description: data.details || data.title || 'Security audit entry',
+            ipAddress: data.ip || '127.0.0.1',
+            device: data.targetDeviceId || 'Admin Device'
+          };
+        });
+        setLogs([...liveItems, ...mockActivityLogs]);
+      }
+    }, (err) => {
+      console.warn('Live activityLogs subscription warning:', err);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const filteredLogs = logs.filter((log) => {
     if (searchTerm.trim()) {

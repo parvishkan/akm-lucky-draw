@@ -4,6 +4,7 @@ import { X, Gift, Star, Clock, Award, CheckSquare, Layers } from 'lucide-react';
 import { PrizeItem } from './PrizeCard';
 import PrizeStatusBadge from './PrizeStatusBadge';
 import InventoryProgress from './InventoryProgress';
+import PrizeProductVisual from '../../../components/PrizeProductVisual';
 
 interface PrizeDetailsPanelProps {
   prize: PrizeItem | null;
@@ -52,12 +53,8 @@ export const PrizeDetailsPanel: React.FC<PrizeDetailsPanelProps> = ({ prize, onC
         <div className="p-4 rounded-2xl bg-[#0D021A] border border-[#FFD700]/40 space-y-3 text-center relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-[2px] bg-[#FFD700]" />
 
-          <div className="relative w-32 h-32 mx-auto rounded-xl bg-[#1D0636] border border-[#FFD700]/20 p-2 flex items-center justify-center">
-            {prize.image ? (
-              <img src={prize.image} alt={prize.name} className="w-full h-full object-contain drop-shadow" />
-            ) : (
-              <Gift className="w-12 h-12 text-[#FFD700]" />
-            )}
+          <div className="relative w-32 h-32 mx-auto rounded-xl bg-[#1D0636] border border-[#FFD700]/20 p-2 flex items-center justify-center overflow-hidden">
+            <PrizeProductVisual prize={prize} size="lg" alt={prize.name} />
           </div>
 
           <div className="space-y-1">

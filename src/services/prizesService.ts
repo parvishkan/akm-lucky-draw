@@ -27,6 +27,8 @@ export interface PrizeDocument extends Prize {
   priority: number;
   displayOrder: number;
   slotId?: string;
+  image?: string | null;
+  imageUrl?: string | null;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -59,7 +61,9 @@ export class PrizesService {
             iconName: data.iconName || 'gift',
             badgeColor: data.badgeColor || 'from-amber-400 to-yellow-600',
             priority: data.priority || 1,
-            displayOrder: data.displayOrder || 1
+            displayOrder: data.displayOrder || 1,
+            image: (data.image && data.image !== '/akm-logo.png') ? data.image : ((data.imageUrl && data.imageUrl !== '/akm-logo.png') ? data.imageUrl : null),
+            imageUrl: (data.imageUrl && data.imageUrl !== '/akm-logo.png') ? data.imageUrl : ((data.image && data.image !== '/akm-logo.png') ? data.image : null)
           } as PrizeDocument;
         });
       }
@@ -144,7 +148,9 @@ export class PrizesService {
         iconName: data.iconName || 'gift',
         badgeColor: data.badgeColor || 'from-amber-400 to-yellow-600',
         priority: data.priority || 1,
-        displayOrder: data.displayOrder || 1
+        displayOrder: data.displayOrder || 1,
+        image: (data.image && data.image !== '/akm-logo.png') ? data.image : ((data.imageUrl && data.imageUrl !== '/akm-logo.png') ? data.imageUrl : null),
+        imageUrl: (data.imageUrl && data.imageUrl !== '/akm-logo.png') ? data.imageUrl : ((data.image && data.image !== '/akm-logo.png') ? data.image : null)
       } as PrizeDocument;
     };
 
@@ -197,6 +203,8 @@ export class PrizesService {
       priority: prizeData.priority || 1,
       displayOrder: prizeData.displayOrder || 1,
       slotId: prizeData.slotId || null,
+      image: prizeData.image || prizeData.imageUrl || null,
+      imageUrl: prizeData.imageUrl || prizeData.image || null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -234,6 +242,36 @@ export class PrizesService {
   static async deletePrize(prizeId: string): Promise<void> {
     const docRef = doc(db, collections.PRIZES, prizeId);
     await deleteDoc(docRef);
+  }
+
+  /**
+   * Get total available gift inventory across all active enabled prizes.
+   * Directly queries Firestore /prizes to guarantee the most up-to-date count.
+   */
+  static async getTotalAvailableGifts(campaignId?: string): Promise<number> {
+    try {
+      const snapshot = await getDocs(collection(db, collections.PRIZES));
+      if (snapshot.empty) return 0;
+
+      let total = 0;
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (campaignId && data.campaignId && data.campaignId !== campaignId) {
+          return;
+        }
+        const isActive = (data.status ? data.status === 'ACTIVE' : true) && data.enabled !== false;
+        if (isActive) {
+          const avail = Number(data.availableQuantity ?? data.remainingStock ?? data.quantity ?? 0);
+          if (!isNaN(avail) && avail > 0) {
+            total += avail;
+          }
+        }
+      });
+      return total;
+    } catch (err) {
+      console.error('PrizesService.getTotalAvailableGifts error:', err);
+      return 0;
+    }
   }
 }
 

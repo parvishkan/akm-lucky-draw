@@ -81,5 +81,27 @@ service cloud.firestore {
       allow get: if true;
       allow list, create, update, delete: if isAdmin();
     }
+
+    // 10. Admin Device & Session Management:
+    // - Active admins can read their own session; Master Owners can read all sessions.
+    // - Non-owners cannot elevate a session to isMasterDevice: true.
+    // - The Master Owner device session is permanently protected and cannot be revoked or deleted.
+    // - Revocation of other sessions is permitted only by the Master Owner.
+    // - Public customers have ZERO access.
+    match /adminSessions/{sessionId} {
+      allow get: if isAdmin() && (resource.data.uid == request.auth.uid || isOwner());
+      allow list: if isOwner();
+      allow create: if isAdmin() && 
+        request.resource.data.uid == request.auth.uid &&
+        (request.resource.data.isMasterDevice == false || isOwner());
+      allow update: if isAdmin() && (
+        (request.resource.data.uid == request.auth.uid && 
+         request.resource.data.status == resource.data.status &&
+         request.resource.data.isMasterDevice == resource.data.isMasterDevice) ||
+        (isOwner() && resource.data.isMasterDevice != true) ||
+        (isOwner() && resource.data.uid == request.auth.uid)
+      );
+      allow delete: if isOwner() && resource.data.isMasterDevice != true;
+    }
   }
 }

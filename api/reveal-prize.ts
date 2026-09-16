@@ -188,9 +188,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const nowTimestamp = FieldValue.serverTimestamp();
 
-        // A. Mark test token REDEEMED
+        // A. Mark test token CLAIMED
         transaction.update(testTokenRef, {
-          status: 'REDEEMED',
+          status: 'CLAIMED',
+          claimedAt: nowTimestamp,
           redeemedAt: nowTimestamp,
           winnerId,
           claimId,
@@ -254,7 +255,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             category: selectedPrize.category,
             value: selectedPrize.value,
             description: selectedPrize.description,
-            image: '/akm-logo.png'
+            image: (selectedPrize.image && selectedPrize.image !== '/akm-logo.png') ? selectedPrize.image : ((selectedPrize.imageUrl && selectedPrize.imageUrl !== '/akm-logo.png') ? selectedPrize.imageUrl : null)
           }
         };
       });
@@ -280,8 +281,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         throw { code: 403, message: 'This token code has been deactivated.' };
       }
 
-      if (tokenData.status === 'VERIFIED' || tokenData.status === 'USED' || tokenData.status === 'CLAIMED') {
+      if (tokenData.status === 'VERIFIED' || tokenData.status === 'USED' || tokenData.status === 'CLAIMED' || tokenData.status === 'REDEEMED') {
         throw { code: 409, message: 'This token code has already been redeemed.' };
+      }
+
+      if (tokenData.status !== 'AVAILABLE') {
+        throw { code: 409, message: 'This token code is not available for redemption.' };
       }
 
       // 2. Fetch Campaign state from /campaigns/{campaignId}
@@ -395,9 +400,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const nowTimestamp = FieldValue.serverTimestamp();
       const decrementedQty = Math.max(0, freshAvailableQty - 1);
 
-      // A. Lock Token status to VERIFIED (prevents reuse)
+      // A. Lock Token status to CLAIMED (prevents reuse)
       transaction.update(tokenRef, {
-        status: 'VERIFIED',
+        status: 'CLAIMED',
+        claimedAt: nowTimestamp,
         verifiedAt: nowTimestamp,
         winnerId,
         claimId
@@ -407,8 +413,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       transaction.update(selectedPrizeRef, {
         availableQuantity: decrementedQty,
         remainingQuantity: decrementedQty,
+        remainingStock: decrementedQty,
+        ...(decrementedQty === 0 ? { status: 'OUT_OF_STOCK' } : {}),
         updatedAt: nowTimestamp
       });
+
+      const prizeImg = (selectedPrizeData.image && selectedPrizeData.image !== '/akm-logo.png')
+        ? selectedPrizeData.image
+        : ((selectedPrizeData.imageUrl && selectedPrizeData.imageUrl !== '/akm-logo.png') ? selectedPrizeData.imageUrl : null);
 
       // C. Create Winner record in /winners/{winnerId}
       transaction.set(winnerRef, {
@@ -419,9 +431,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         prizeName: selectedPrizeData.name || selectedPrizeData.title || 'Diwali Reward',
         prizeCategory: selectedPrizeData.category || 'Regular Gift',
         prizeValue: selectedPrizeData.value || '₹2,500',
+        prizeImage: prizeImg,
         claimId,
         claimStatus: 'PENDING',
-        wonAt: nowTimestamp
+        wonAt: nowTimestamp,
+        isTest: false
       });
 
       // D. Create Claim Pass record in /claims/{claimId}
@@ -433,8 +447,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         prizeId: selectedPrizeDoc.id,
         prizeName: selectedPrizeData.name || selectedPrizeData.title || 'Diwali Reward',
         prizeValue: selectedPrizeData.value || '₹2,500',
+        prizeImage: prizeImg,
         claimStatus: 'PENDING',
-        createdAt: nowTimestamp
+        createdAt: nowTimestamp,
+        isTest: false
       });
 
       // E. Audit log entry in /activityLogs
@@ -445,11 +461,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title: `Prize "${selectedPrizeData.name || selectedPrizeData.title || 'Diwali Reward'}" Awarded`,
         user: tokenCode,
         timestamp: nowTimestamp,
+        isTest: false,
         details: {
           winnerId,
           claimId,
           tokenCode,
-          prizeId: selectedPrizeDoc.id
+          prizeId: selectedPrizeDoc.id,
+          isTest: false
         }
       });
 
@@ -463,7 +481,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           category: selectedPrizeData.category || 'Regular Gift',
           value: selectedPrizeData.value || '₹2,500',
           description: selectedPrizeData.description || '',
-          image: selectedPrizeData.image || '/akm-logo.png'
+          image: (selectedPrizeData.image && selectedPrizeData.image !== '/akm-logo.png') ? selectedPrizeData.image : ((selectedPrizeData.imageUrl && selectedPrizeData.imageUrl !== '/akm-logo.png') ? selectedPrizeData.imageUrl : null)
         }
       };
     });

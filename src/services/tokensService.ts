@@ -14,6 +14,7 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { CampaignService } from './campaignService';
+import { PrizesService } from './prizesService';
 
 export interface TokenRecord {
   id?: string;
@@ -192,7 +193,8 @@ export class TokensService {
   /**
    * Step 2 Blind Token Generation for a specific Campaign Time Slot
    * Generates unassigned tokens with NO prize fields attached prior to customer reveal.
-   * Strictly enforces slot.tokenLimit.
+   * Strictly enforces both Prize Inventory Safety Gate and slot.tokenLimit.
+   * Chunks writes into Firestore batches of <= 500 documents.
    */
   static async generateBatchForSlot(
     campaignId: string,
@@ -206,12 +208,41 @@ export class TokensService {
         throw new Error('Campaign ID and Time Slot ID are required for token batch generation.');
       }
 
-      // 1. Fetch Time Slot to check tokenLimit constraint
+      if (!count || count <= 0) {
+        return {
+          success: false,
+          createdCount: 0,
+          message: 'Token count must be greater than zero.'
+        };
+      }
+
+      // 1. PRIZE INVENTORY SAFETY GATE (Atomic Pre-Check)
+      // Check available active gifts before touching or creating any token records
+      const availableGifts = await PrizesService.getTotalAvailableGifts(campaignId);
+
+      if (availableGifts === 0) {
+        return {
+          success: false,
+          createdCount: 0,
+          message: 'Cannot generate tokens: No active gifts are currently available for this campaign.'
+        };
+      }
+
+      if (count > availableGifts) {
+        const shortage = count - availableGifts;
+        return {
+          success: false,
+          createdCount: 0,
+          message: `Cannot generate tokens: Requested ${count} tokens exceeds available gift inventory (${availableGifts} available, shortage of ${shortage}).`
+        };
+      }
+
+      // 2. Fetch Time Slot to check tokenLimit constraint
       const timeSlots = await CampaignService.getTimeSlots(campaignId);
       const slot = timeSlots.find(s => s.slotId === slotId || s.id === slotId);
       const tokenLimit = slot?.tokenLimit || 100;
 
-      // 2. Count existing tokens created for this time slot
+      // 3. Count existing tokens created for this time slot
       const q = query(collection(db, collections.TOKENS), where('slotId', '==', slotId));
       const existingSnap = await getDocs(q);
       const existingCount = existingSnap.size;
@@ -225,32 +256,38 @@ export class TokensService {
       }
 
       const availableCapacity = tokenLimit - existingCount;
-      const countToGenerate = Math.min(count, availableCapacity);
-
-      if (countToGenerate <= 0) {
+      if (count > availableCapacity) {
         return {
           success: false,
           createdCount: 0,
-          message: `No additional tokens can be generated. Time slot capacity is full (${existingCount}/${tokenLimit}).`
+          message: `Requested ${count} tokens exceeds available slot capacity (${availableCapacity} remaining for this time slot).`
         };
       }
 
-      // 3. Generate collision-resistant unique tokens (excluding confusing characters O/0, I/1, S/5)
+      // 4. Generate collision-resistant unique tokens (excluding confusing characters O/0, I/1, S/5)
       const chars = 'ABCDEFGHJKLMNPQRTUVWXY2346789';
-      const batch = writeBatch(db);
+      const BATCH_SIZE = 500;
       let createdCount = 0;
+      const generatedCodes = new Set<string>();
+      const tokensToCreate: TokenRecord[] = [];
 
-      for (let i = 0; i < countToGenerate; i++) {
-        let rand = '';
-        for (let j = 0; j < length; j++) {
-          rand += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        const tokenCode = `${prefix}${rand}`;
+      for (let i = 0; i < count; i++) {
+        let tokenCode = '';
+        let attempts = 0;
+        do {
+          let rand = '';
+          for (let j = 0; j < length; j++) {
+            rand += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          tokenCode = `${prefix}${rand}`;
+          attempts++;
+        } while (generatedCodes.has(tokenCode) && attempts < 100);
+
+        generatedCodes.add(tokenCode);
 
         // CRITICAL SECURITY REQUIREMENT:
         // Do NOT attach assignedPrizeId, assignedPrizeName, or prizeTitle to the new token!
-        const tokenRef = doc(db, collections.TOKENS, tokenCode);
-        const tokenPayload: TokenRecord = {
+        tokensToCreate.push({
           tokenId: tokenCode,
           tokenCode: tokenCode,
           campaignId: campaignId,
@@ -258,13 +295,20 @@ export class TokensService {
           status: 'AVAILABLE',
           createdAt: serverTimestamp(),
           createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-        };
-
-        batch.set(tokenRef, tokenPayload);
-        createdCount++;
+        });
       }
 
-      await batch.commit();
+      // 5. Commit in Firestore batches of <= 500 documents
+      for (let i = 0; i < tokensToCreate.length; i += BATCH_SIZE) {
+        const chunk = tokensToCreate.slice(i, i + BATCH_SIZE);
+        const batch = writeBatch(db);
+        for (const token of chunk) {
+          const tokenRef = doc(db, collections.TOKENS, token.tokenCode);
+          batch.set(tokenRef, token);
+        }
+        await batch.commit();
+        createdCount += chunk.length;
+      }
 
       return {
         success: true,
