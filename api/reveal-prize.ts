@@ -73,7 +73,9 @@ function recordFailedAttempt(ip: string): void {
   }
 }
 
-function generateCryptoId(prefix: 'WIN' | 'CLM'): string {
+type IdPrefix = 'WIN' | 'CLM' | 'TEST-WIN' | 'TEST-CLM';
+
+function generateCryptoId(prefix: IdPrefix): string {
   const timeHex = Date.now().toString(36).toUpperCase();
   const randomHex = randomBytes(4).toString('hex').toUpperCase();
   return `${prefix}-${timeHex}-${randomHex}`;
@@ -157,7 +159,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Demo Prize Pool (Completely separate from real production prizes)
-        const DEMO_PRIZES = [
+        interface DemoPrize {
+          id: string;
+          title: string;
+          category: string;
+          value: string;
+          description: string;
+          image?: string | null;
+          imageUrl?: string | null;
+        }
+
+        const DEMO_PRIZES: DemoPrize[] = [
           { id: 'demo-smart-tv', title: 'Demo Smart TV', category: 'Demo Electronics', value: '₹45,000', description: 'Demonstration 55-inch 4K Smart TV' },
           { id: 'demo-furniture', title: 'Demo Furniture', category: 'Demo Home', value: '₹25,000', description: 'Demonstration Luxury Recliner' },
           { id: 'demo-gift-hamper', title: 'Demo Gift Hamper', category: 'Demo Festive Treats', value: '₹5,000', description: 'Demonstration Festive Hamper' },
