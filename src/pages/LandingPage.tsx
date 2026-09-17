@@ -105,7 +105,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
         scale: isZooming ? 1.03 : 1
       }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="relative min-h-screen w-full flex flex-col justify-between items-center bg-luxury-static overflow-hidden selection:bg-akm-gold-royal selection:text-akm-purple-deepest"
+      className="relative min-h-screen w-full flex flex-col justify-between items-center bg-luxury-static overflow-x-hidden selection:bg-akm-gold-royal selection:text-akm-purple-deepest"
     >
       {/* 1. Soft Ambient Golden Glow in Background */}
       <div className="fixed inset-0 spotlight-radial pointer-events-none z-0" />
@@ -241,9 +241,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.4 }}
-            className="min-h-screen w-full flex flex-col justify-center items-center"
+            className="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center py-6 px-4"
           >
-            <TokenVerificationScreen onSuccess={handleVerificationSuccess} />
+            <div className="my-auto w-full flex justify-center">
+              <TokenVerificationScreen onSuccess={handleVerificationSuccess} />
+            </div>
           </motion.div>
         )}
 
@@ -255,13 +257,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.4 }}
-            className="min-h-screen w-full flex flex-col justify-center items-center"
+            className="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center py-6 px-4"
           >
-            <MysteryBoxExperience
-              tokenCode={verifiedTokenData.tokenCode}
-              slotId={verifiedTokenData.slotId}
-              onBoxSelected={handleBoxSelected}
-            />
+            <div className="my-auto w-full flex justify-center">
+              <MysteryBoxExperience
+                tokenCode={verifiedTokenData.tokenCode}
+                slotId={verifiedTokenData.slotId}
+                onBoxSelected={handleBoxSelected}
+              />
+            </div>
           </motion.div>
         )}
 
@@ -282,14 +286,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="min-h-screen w-full flex flex-col justify-center items-center"
+            className="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center py-6 px-4"
           >
-            <PrizeRevealExperience
-              boxId={selectedBoxId}
-              prize={wonPrize}
-              claimId={claimId}
-              onClaimClick={handleClaimClick}
-            />
+            <div className="my-auto w-full flex justify-center pb-8">
+              <PrizeRevealExperience
+                boxId={selectedBoxId}
+                prize={wonPrize}
+                claimId={claimId}
+                onClaimClick={handleClaimClick}
+              />
+            </div>
           </motion.div>
         )}
 
@@ -301,14 +307,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.5 }}
-            className="min-h-screen w-full flex flex-col justify-center items-center"
+            className="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center py-6 px-4"
           >
-            <PrizeClaimExperience
-              tokenData={verifiedTokenData}
-              prize={wonPrize}
-              claimId={claimId}
-              onClaimConfirmed={handleClaimConfirmed}
-            />
+            <div className="my-auto w-full flex justify-center pb-10">
+              <PrizeClaimExperience
+                tokenData={verifiedTokenData}
+                prize={wonPrize}
+                claimId={claimId}
+                onClaimConfirmed={handleClaimConfirmed}
+              />
+            </div>
           </motion.div>
         )}
 
@@ -319,7 +327,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -20 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto"
           >
             <div className="glass-surface rounded-3xl p-6 text-center max-w-xs space-y-4 border border-emerald-400/70 shadow-[0_0_50px_rgba(52,211,153,0.3)]">
               <motion.div
