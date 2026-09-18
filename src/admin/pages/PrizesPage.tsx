@@ -124,19 +124,24 @@ export const PrizesPage: React.FC = () => {
       : null;
 
     if (data.id) {
-      // Update in Firestore
-      await PrizesService.updatePrize(data.id, {
+      // Update in Firestore — preserve stock inventory and availableQuantity unless explicitly updated
+      const updatePayload: Partial<PrizeDocument> = {
         name: data.name,
         title: data.name,
         totalQuantity: data.totalQuantity,
-        availableQuantity: data.remainingQuantity ?? data.totalQuantity,
         value: data.value,
         category: data.category,
         description: data.description,
         slotId: data.slotId,
         image: sanitizedImage,
         imageUrl: sanitizedImage
-      });
+      };
+
+      if (data.remainingQuantity !== undefined) {
+        updatePayload.availableQuantity = data.remainingQuantity;
+      }
+
+      await PrizesService.updatePrize(data.id, updatePayload);
     } else {
       // Add in Firestore
       await PrizesService.addPrize({

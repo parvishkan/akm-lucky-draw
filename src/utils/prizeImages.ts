@@ -187,11 +187,11 @@ export function getPrizeImageCandidates(
 ): string[] {
   const candidates: string[] = [];
 
-  // Priority: Custom uploaded photo (Firebase Storage URL or Data URL)
+  // Priority: Custom uploaded photo (Firebase Storage HTTPS URL)
   const customUrl = prize?.imageUrl || prize?.image;
   if (customUrl && typeof customUrl === 'string' && customUrl.trim()) {
     const cleanUrl = customUrl.trim();
-    if (cleanUrl !== '/akm-logo.png' && !cleanUrl.endsWith('/akm-logo.png')) {
+    if (cleanUrl !== '/akm-logo.png' && !cleanUrl.endsWith('/akm-logo.png') && !cleanUrl.startsWith('data:')) {
       candidates.push(cleanUrl);
     }
   }

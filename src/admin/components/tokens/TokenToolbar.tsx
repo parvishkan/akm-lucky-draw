@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, Download, ArrowUpDown, RefreshCw, FileText } from 'lucide-react';
+import { Search, Filter, Download, ArrowUpDown, RefreshCw, FileText, Printer } from 'lucide-react';
 import { TokenStatus } from './StatusBadge';
 
 interface TokenToolbarProps {
@@ -72,9 +72,10 @@ export const TokenToolbar: React.FC<TokenToolbarProps> = ({
           <button
             onClick={onExportPDF}
             className="px-3.5 py-2.5 rounded-xl bg-[#0D021A] border border-[#FFD700]/30 text-white font-bold text-xs flex items-center gap-1.5 hover:bg-white/10 transition-colors cursor-pointer"
+            title="Download Printable Token Sheet HTML file"
           >
-            <FileText className="w-3.5 h-3.5 text-[#FFD700]" />
-            <span>Export PDF</span>
+            <Printer className="w-3.5 h-3.5 text-[#FFD700]" />
+            <span>Download Print Sheet</span>
           </button>
         </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, Ticket, RefreshCw, Printer, FlaskConical, Trash2 } from 'lucide-react';
+import { PlusCircle, Ticket, RefreshCw, Printer, FlaskConical, Trash2, Download, ExternalLink } from 'lucide-react';
 import TokenStats from '../components/tokens/TokenStats';
 import TokenToolbar from '../components/tokens/TokenToolbar';
 import TokenTable, { TokenItem } from '../components/tokens/TokenTable';
@@ -244,55 +244,224 @@ export const TokensPage: React.FC = () => {
     a.click();
   };
 
-  // Print Token Sheet for physical counter distribution
-  const handlePrintTokens = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+  // Generate self-contained, print-optimized HTML token sheet
+  const generatePrintSheetHtml = (tokensToPrint: TokenItem[]) => {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AKM Lucky Draw - Official Token Print Sheet (${tokensToPrint.length} Tokens)</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", monospace;
+      margin: 0;
+      padding: 16px;
+      color: #000;
+      background: #fff;
+    }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      background: #111;
+      color: #fff;
+      padding: 12px 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+    }
+    .toolbar-title {
+      font-weight: bold;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+    .print-btn {
+      padding: 9px 18px;
+      background: #FFD700;
+      color: #000;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .print-btn:hover {
+      background: #E5B80B;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 14px;
+      border-bottom: 2px solid #000;
+      padding-bottom: 8px;
+    }
+    .header h1 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .header p {
+      margin: 0;
+      font-size: 11px;
+      color: #444;
+      font-family: monospace;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .token-card {
+      border: 1.5px dashed #333;
+      padding: 9px 6px;
+      text-align: center;
+      border-radius: 6px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 56px;
+    }
+    .mall-tag {
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .token-code {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      color: #000;
+    }
+    .token-sub {
+      font-size: 8px;
+      color: #888;
+      margin-top: 2px;
+      letter-spacing: 0.5px;
+    }
+    @media print {
+      .toolbar {
+        display: none !important;
+      }
+      body {
+        padding: 0 !important;
+      }
+      .grid {
+        gap: 6px !important;
+      }
+      .token-card {
+        border: 1px dashed #222 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <div class="toolbar-title">
+      🎟️ ANU KRISHNA MALL — OFFICIAL TOKEN PRINT SHEET (${tokensToPrint.length} Tokens)
+    </div>
+    <button class="print-btn" onclick="window.print()">
+      🖨️ Print / Save as PDF
+    </button>
+  </div>
 
-    // Use full production tokens list, strictly excluding test tokens
+  <div class="header">
+    <h1>Anu Krishna Mall — Diwali Lucky Draw 2026</h1>
+    <p>OFFICIAL RECEIPT TOKENS PRINT SHEET • BATCH: ${tokensToPrint.length} TOKENS • GENERATED: ${new Date().toLocaleDateString('en-GB')}</p>
+  </div>
+
+  <div class="grid">
+    ${tokensToPrint.map((t, idx) => `
+      <div class="token-card">
+        <div class="mall-tag">Anu Krishna Mall</div>
+        <div class="token-code">${t.tokenCode}</div>
+        <div class="token-sub">Token #${idx + 1} • Keep Receipt</div>
+      </div>
+    `).join('')}
+  </div>
+</body>
+</html>`;
+  };
+
+  // Direct Download Token Print Sheet HTML file
+  const handleDownloadPrintSheet = () => {
     const tokensToPrint = (searchTerm.trim() || selectedStatus !== 'ALL')
       ? filteredTokens.filter((t) => !t.isTest)
       : tokens.filter((t) => !t.isTest);
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>AKM Lucky Draw - Printable Token Sheet</title>
-          <style>
-            body { font-family: monospace; padding: 20px; color: #000; }
-            h2 { text-align: center; margin-bottom: 5px; }
-            p { text-align: center; font-size: 12px; margin-bottom: 20px; }
-            .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-            .token-card { border: 1px dashed #000; padding: 10px; text-align: center; border-radius: 6px; page-break-inside: avoid; }
-            .code { font-size: 16px; font-weight: bold; }
-            .sub { font-size: 9px; color: #555; margin-top: 4px; }
-            @media print {
-              body { padding: 0; }
-              .no-print { display: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="no-print" style="margin-bottom: 15px; text-align: right;">
-            <button onclick="window.print()" style="padding: 8px 16px; background: #000; color: #fff; border: none; cursor: pointer; border-radius: 4px;">Print Tokens Sheet</button>
-          </div>
-          <h2>ANU KRISHNA MALL - LUCKY DRAW TOKENS</h2>
-          <p>Generated: ${new Date().toLocaleDateString()} | Total Tokens: ${tokensToPrint.length}</p>
-          <div class="grid">
-            ${tokensToPrint.map(t => `
-              <div class="token-card">
-                <div class="code">${t.tokenCode}</div>
-                <div class="sub">AKM Official Receipt Token</div>
-              </div>
-            `).join('')}
-          </div>
-        </body>
-      </html>
-    `;
+    if (!tokensToPrint.length) {
+      alert('No production tokens available to download.');
+      return;
+    }
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    try {
+      const htmlContent = generatePrintSheetHtml(tokensToPrint);
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AKM-Token-Print-Sheet-${tokensToPrint.length}-Tokens-${Date.now()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err: any) {
+      console.error('Failed to download print sheet:', err);
+      alert('Download error: ' + (err?.message || 'Failed to generate token print sheet.'));
+    }
+  };
+
+  // Open Printable Token Sheet in new tab with browser print fallback
+  const handleOpenPrintSheet = () => {
+    const tokensToPrint = (searchTerm.trim() || selectedStatus !== 'ALL')
+      ? filteredTokens.filter((t) => !t.isTest)
+      : tokens.filter((t) => !t.isTest);
+
+    if (!tokensToPrint.length) {
+      alert('No production tokens available to print.');
+      return;
+    }
+
+    try {
+      const htmlContent = generatePrintSheetHtml(tokensToPrint);
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (!printWindow) {
+        // Fallback if popup blocker intercepted: directly download the file
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AKM-Token-Print-Sheet-${tokensToPrint.length}-Tokens-${Date.now()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err: any) {
+      console.error('Failed to open print sheet:', err);
+      handleDownloadPrintSheet();
+    }
   };
 
   return (
@@ -313,15 +482,24 @@ export const TokensPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Primary Actions: Print, Refresh, Demo Mode, Clear Test Data, Generate Slot Tokens */}
+        {/* Primary Actions: Download Print Sheet, Open Print Sheet, Refresh, Demo Mode, Clear Test Data */}
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={handlePrintTokens}
+            onClick={handleDownloadPrintSheet}
+            className="px-4 py-3 rounded-2xl bg-gradient-to-r from-[#FFD700] via-[#D4AF37] to-[#FFD700] text-[#0D021A] font-extrabold text-xs flex items-center gap-2 hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all cursor-pointer"
+            title="Download Printable Token Sheet HTML file directly"
+          >
+            <Download className="w-4 h-4 text-[#0D021A]" />
+            <span>Download Print Sheet</span>
+          </button>
+
+          <button
+            onClick={handleOpenPrintSheet}
             className="px-4 py-3 rounded-2xl bg-[#1D0636] border border-[#FFD700]/30 text-[#FFD700] font-bold text-xs flex items-center gap-2 hover:bg-[#0D021A] transition-colors cursor-pointer"
-            title="Print Token Sheet for Counters"
+            title="Open Printable Token Sheet in a new tab"
           >
             <Printer className="w-4 h-4 text-[#FFD700]" />
-            <span className="hidden sm:inline">Print Sheet</span>
+            <span className="hidden sm:inline">Open Print Sheet</span>
           </button>
 
           <button
@@ -426,7 +604,7 @@ export const TokensPage: React.FC = () => {
             sortBy={sortBy}
             onSortChange={setSortBy}
             onExportCSV={handleExportCSV}
-            onExportPDF={handlePrintTokens}
+            onExportPDF={handleDownloadPrintSheet}
             onResetFilters={() => {
               setSearchTerm('');
               setSelectedStatus('ALL');
@@ -456,7 +634,7 @@ export const TokensPage: React.FC = () => {
             onBulkBlock={handleBulkBlock}
             onBulkDelete={handleBulkDelete}
             onExportCSV={handleExportCSV}
-            onExportPDF={handlePrintTokens}
+            onExportPDF={handleDownloadPrintSheet}
           />
 
           {/* 6. Token Details Panel */}

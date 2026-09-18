@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Download, Ban, Trash2, AlertTriangle, FileText } from 'lucide-react';
+import { CheckSquare, Download, Ban, Trash2, AlertTriangle, FileText, Printer } from 'lucide-react';
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -55,9 +55,10 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           <button
             onClick={onExportPDF}
             className="px-3 py-1.5 rounded-lg bg-[#0D021A] border border-[#FFD700]/30 text-white font-bold flex items-center gap-1 hover:bg-white/10 transition-colors cursor-pointer"
+            title="Download Printable Token Sheet HTML file"
           >
-            <FileText className="w-3.5 h-3.5 text-[#FFD700]" />
-            <span className="hidden sm:inline">PDF</span>
+            <Printer className="w-3.5 h-3.5 text-[#FFD700]" />
+            <span className="hidden sm:inline">Print Sheet</span>
           </button>
 
           <button

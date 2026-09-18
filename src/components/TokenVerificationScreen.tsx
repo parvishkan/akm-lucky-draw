@@ -22,11 +22,26 @@ export const TokenVerificationScreen: React.FC<TokenVerificationProps> = ({ onSu
     if (e) e.preventDefault();
     if (!tokenInput.trim() || validationState === 'LOADING' || validationState === 'SUCCESS') return;
 
+    const cleanCode = tokenInput.trim().toUpperCase();
+
+    // Enforce new production format ^AKMSPA[A-Z0-9]{3}$ (or TEST- for demo mode)
+    const NEW_TOKEN_REGEX = /^AKMSPA[A-Z0-9]{3}$/;
+    if (!NEW_TOKEN_REGEX.test(cleanCode) && !cleanCode.startsWith('TEST-')) {
+      setValidationState('ERROR');
+      if (cleanCode.includes('-') || cleanCode.startsWith('AKM-')) {
+        setErrorMessage('Invalid format. Old-format tokens are no longer accepted. Format must be AKMSPA followed by 3 alphanumeric characters (e.g. AKMSPAA2E).');
+      } else if (cleanCode.length !== 9) {
+        setErrorMessage('Token must be exactly 9 characters (e.g. AKMSPAA2E).');
+      } else {
+        setErrorMessage('Invalid token format. Token must start with prefix AKMSPA (e.g. AKMSPAA2E).');
+      }
+      return;
+    }
+
     setValidationState('LOADING');
     setErrorMessage('');
 
     try {
-      const cleanCode = tokenInput.trim().toUpperCase();
       const result = await TokensService.verifyToken(cleanCode);
 
       if (result.success) {
@@ -125,10 +140,15 @@ export const TokenVerificationScreen: React.FC<TokenVerificationProps> = ({ onSu
               type="text"
               value={tokenInput}
               onChange={(e) => {
-                setTokenInput(e.target.value.toUpperCase());
+                const raw = e.target.value.toUpperCase();
+                const sanitized = raw.startsWith('TEST-')
+                  ? raw.replace(/[^A-Z0-9-]/g, '').slice(0, 20)
+                  : raw.replace(/[^A-Z0-9]/g, '').slice(0, 9);
+                setTokenInput(sanitized);
                 if (validationState === 'ERROR') setValidationState('IDLE');
               }}
-              placeholder="e.g. AKM-8892"
+              placeholder="e.g. AKMSPAA2E"
+              maxLength={20}
               disabled={validationState === 'LOADING' || validationState === 'SUCCESS'}
               className={`w-full px-4 py-3.5 bg-[#07020E]/90 border rounded-2xl text-center font-mono text-lg font-bold tracking-widest text-white placeholder-gray-500 focus:outline-none transition-all duration-300 ${
                 validationState === 'ERROR'

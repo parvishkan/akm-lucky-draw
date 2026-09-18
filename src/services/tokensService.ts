@@ -155,8 +155,17 @@ export class TokensService {
         }
       } catch (err) {
         console.warn('Test token verification error:', err);
-        return { success: false, status: 'ERROR', message: 'Unable to connect to verification server.' };
       }
+    }
+
+    // Enforce new production format ^AKMSPA[A-Z0-9]{3}$
+    const NEW_TOKEN_REGEX = /^AKMSPA[A-Z0-9]{3}$/;
+    if (!NEW_TOKEN_REGEX.test(cleanCode)) {
+      return {
+        success: false,
+        status: 'INVALID_FORMAT',
+        message: 'Invalid token format. Token must be exactly 9 characters starting with AKMSPA (e.g. AKMSPAA2E).'
+      };
     }
 
     try {
@@ -200,8 +209,8 @@ export class TokensService {
     campaignId: string,
     slotId: string,
     count: number,
-    prefix: string = 'AKM-D1S1-',
-    length: number = 5
+    prefix: string = 'AKMSPA',
+    length: number = 3
   ): Promise<{ success: boolean; createdCount: number; message: string }> {
     try {
       if (!campaignId || !slotId) {
@@ -264,8 +273,8 @@ export class TokensService {
         };
       }
 
-      // 4. Generate collision-resistant unique tokens (excluding confusing characters O/0, I/1, S/5)
-      const chars = 'ABCDEFGHJKLMNPQRTUVWXY2346789';
+      // 4. Generate collision-resistant unique tokens (excluding confusing characters O/0, I/1, S/5, B/8)
+      const chars = '234679ACDEFGHJKLMNPQRTUVWXYZ';
       const BATCH_SIZE = 500;
       let createdCount = 0;
       const generatedCodes = new Set<string>();
@@ -328,7 +337,7 @@ export class TokensService {
   /**
    * Backward-compatible token generation fallback
    */
-  static async generateBatch(count: number, prefix: string = 'AKM-D26-', length: number = 6): Promise<number> {
+  static async generateBatch(count: number, prefix: string = 'AKMSPA', length: number = 3): Promise<number> {
     const res = await this.generateBatchForSlot('akm-diwali-2026', 'slot-day1-morning', count, prefix, length);
     return res.createdCount;
   }

@@ -81,8 +81,8 @@ function generateCryptoId(prefix: IdPrefix): string {
   return `${prefix}-${timeHex}-${randomHex}`;
 }
 
-// Strict token pattern: uppercase alphanumeric and hyphens, 5-32 characters
-const TOKEN_REGEX = /^[A-Z0-9-]{5,32}$/;
+// Strict token pattern: AKMSPA + 3 alphanumeric characters, or TEST token for demo
+const TOKEN_REGEX = /^(AKMSPA[A-Z0-9]{3}|TEST-[A-Z0-9-]{5,20})$/;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const clientIp = getClientIp(req);

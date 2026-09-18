@@ -13,7 +13,7 @@ export const TokenVerificationModal: React.FC<TokenVerificationProps> = ({ onVer
 
   // Quick fill demo token helper
   const handleQuickDemo = () => {
-    setTokenCode('AKM-8892');
+    setTokenCode('AKMSPAA2E');
     setMobileNumber('9876543210');
     setCustomerName('Diwali Shopper');
     setError(null);
@@ -26,8 +26,8 @@ export const TokenVerificationModal: React.FC<TokenVerificationProps> = ({ onVer
     const cleanToken = tokenCode.trim().toUpperCase();
     const cleanMobile = mobileNumber.trim();
 
-    if (!cleanToken || cleanToken.length < 4) {
-      setError('Please enter a valid Shopping Token Code (e.g. AKM-8892)');
+    if (!cleanToken || cleanToken.length !== 9 || !cleanToken.startsWith('AKMSPA')) {
+      setError('Please enter a valid Shopping Token Code (e.g. AKMSPAA2E)');
       triggerShake();
       return;
     }
@@ -132,9 +132,9 @@ export const TokenVerificationModal: React.FC<TokenVerificationProps> = ({ onVer
               <input
                 type="text"
                 value={tokenCode}
-                onChange={(e) => setTokenCode(e.target.value.toUpperCase())}
-                placeholder="e.g. AKM-8892"
-                maxLength={12}
+                onChange={(e) => setTokenCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 9))}
+                placeholder="e.g. AKMSPAA2E"
+                maxLength={9}
                 disabled={isVerifying}
                 className="w-full pl-10 pr-4 py-3 bg-akm-purple-deepest/80 border border-akm-gold-royal/30 rounded-xl text-white placeholder-gray-500 font-mono text-base tracking-wider focus:outline-none focus:border-akm-gold-royal focus:ring-1 focus:ring-akm-gold-royal uppercase transition-all shadow-inner"
               />

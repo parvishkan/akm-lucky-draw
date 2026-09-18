@@ -34,8 +34,8 @@ export const GenerateTokenModal: React.FC<GenerateTokenModalProps> = ({
   const [selectedSlotId, setSelectedSlotId] = useState<string>('slot-day1-morning');
 
   const [count, setCount] = useState(100);
-  const [prefix, setPrefix] = useState('AKM-D1S1-');
-  const [length, setLength] = useState(5);
+  const [prefix, setPrefix] = useState('AKMSPA');
+  const [length, setLength] = useState(3);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -127,7 +127,7 @@ export const GenerateTokenModal: React.FC<GenerateTokenModalProps> = ({
 
   // Sample preview generator
   const generatePreview = () => {
-    const chars = 'ABCDEFGHJKLMNPQRTUVWXY2346789';
+    const chars = '234679ACDEFGHJKLMNPQRTUVWXYZ';
     let rand = '';
     for (let i = 0; i < length; i++) {
       rand += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -403,9 +403,9 @@ export const GenerateTokenModal: React.FC<GenerateTokenModalProps> = ({
                 onChange={(e) => setLength(parseInt(e.target.value))}
                 className="w-full px-4 py-2.5 bg-[#0D021A] border border-[#FFD700]/30 rounded-xl text-white font-mono text-xs font-bold focus:outline-none focus:border-[#FFD700]"
               >
+                <option value={3}>3 Characters (AKMSPA + 3)</option>
                 <option value={4}>4 Characters</option>
-                <option value={5}>5 Characters (Recommended)</option>
-                <option value={6}>6 Characters</option>
+                <option value={5}>5 Characters</option>
               </select>
             </div>
           </div>
