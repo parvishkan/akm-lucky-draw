@@ -21,6 +21,10 @@ export class AnalyticsService {
 
     console.log(`[AKM Analytics] Tracked ${eventName}:`, { ...payload, deviceType, timestamp });
 
+    if (eventName === 'QR_SCAN') {
+      ActivityLogger.log('QR_SCAN', `QR Code Scanned on ${deviceType}`, 'Customer');
+    }
+
     if (eventName === 'TOKEN_VERIFIED') {
       ActivityLogger.log('TOKEN_VERIFIED', `Token Verified on ${deviceType}`, payload.tokenCode || 'Guest');
     }

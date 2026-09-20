@@ -13,6 +13,7 @@ export type ActivityLogType =
   | 'FAILED_ADMIN_ACCESS'
   | 'MASTER_DEVICE_PROTECTION_ATTEMPT'
   | 'TOKEN_VERIFIED'
+  | 'QR_SCAN'
   | 'PRIZE_CLAIMED'
   | 'NEW_WINNER'
   | 'GIFT_ADDED'
