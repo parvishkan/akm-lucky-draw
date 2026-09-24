@@ -1,7 +1,7 @@
 import { auth, db, collections } from './firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { DeviceSessionService } from './deviceSessionService';
+import { DeviceSessionService, MASTER_OWNER_UID, MASTER_OWNER_EMAIL } from './deviceSessionService';
 import { ActivityLogger } from './activityLogger';
 
 export interface AdminProfile {
@@ -54,15 +54,20 @@ export class AdminAuthService {
       try {
         const { sessionRecord, isMaster } = await DeviceSessionService.registerCurrentSession(authCheck.profile);
         
+        const isMasterOwner = isMaster || authCheck.profile.uid === MASTER_OWNER_UID || authCheck.profile.email.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase() || authCheck.profile.role === 'OWNER';
+        const displayName = isMasterOwner ? 'Parvish Kan' : (authCheck.profile.email.split('@')[0]);
+
         await ActivityLogger.log(
           'LOGIN',
-          `Admin logged in (${authCheck.profile.email}) [${sessionRecord.deviceInfo.deviceName}]`,
-          authCheck.profile.email,
+          'Admin Login',
+          displayName,
           {
             actorUid: res.user.uid,
-            targetDeviceId: sessionRecord.deviceId,
-            module: 'Authentication',
-            details: isMaster ? 'Master Owner Device authenticated' : 'Staff device session authenticated'
+            actorEmail: authCheck.profile.email,
+            targetDeviceId: sessionRecord.maskedDeviceId,
+            module: 'Authentication / Security',
+            status: 'SUCCESS',
+            details: `${displayName} logged in from ${sessionRecord.deviceInfo.deviceName} (${sessionRecord.deviceInfo.os} • ${sessionRecord.deviceInfo.browser})`
           }
         );
       } catch (sessionErr: any) {
@@ -85,6 +90,24 @@ export class AdminAuthService {
 
   static async logout(): Promise<void> {
     try {
+      const user = auth.currentUser;
+      if (user) {
+        const isMasterOwner = user.uid === MASTER_OWNER_UID || user.email?.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase();
+        const displayName = isMasterOwner ? 'Parvish Kan' : (user.email?.split('@')[0] || 'Admin');
+
+        await ActivityLogger.log(
+          'LOGOUT',
+          'Admin Logout',
+          displayName,
+          {
+            actorUid: user.uid,
+            actorEmail: user.email || undefined,
+            module: 'Authentication / Security',
+            status: 'SUCCESS',
+            details: `${displayName} logged out of Admin Console`
+          }
+        );
+      }
       await signOut(auth);
     } catch (err) {
       console.warn('Firebase Auth logout error:', err);

@@ -111,7 +111,7 @@ export class DeviceSessionService {
     let deviceName = customName;
     if (!deviceName) {
       if (isMasterOwner) {
-        deviceName = 'Master Laptop';
+        deviceName = `${os} (Primary Device)`;
       } else {
         deviceName = `${os} (${browser})`;
       }
@@ -161,8 +161,8 @@ export class DeviceSessionService {
       deviceId,
       maskedDeviceId,
       uid: profile.uid,
-      email: profile.email,
-      displayName: profile.email.split('@')[0],
+      email: isMaster ? 'parvish@anukrishnamall.com' : profile.email,
+      displayName: isMaster ? 'Parvish Kan' : profile.email.split('@')[0],
       role: profile.role,
       isMasterDevice: isMaster,
       deviceInfo,
@@ -227,15 +227,19 @@ export class DeviceSessionService {
       const sessions: AdminSessionRecord[] = [];
       snap.forEach((d) => {
         const data = d.data();
+        const isMaster = !!data.isMasterDevice || data.uid === MASTER_OWNER_UID || data.email?.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase();
+        const displayName = isMaster ? 'Parvish Kan' : (data.displayName || data.email?.split('@')[0] || 'Admin');
+        const displayEmail = isMaster ? 'parvish@anukrishnamall.com' : (data.email || 'admin@anukrishnamall.com').replace(/[\[\n]/g, '');
+
         sessions.push({
           sessionId: d.id,
           deviceId: data.deviceId || d.id,
           maskedDeviceId: data.maskedDeviceId || this.maskDeviceId(data.deviceId || d.id),
           uid: data.uid,
-          email: data.email,
-          displayName: data.displayName || data.email?.split('@')[0] || 'Admin',
-          role: data.role || 'STAFF',
-          isMasterDevice: !!data.isMasterDevice,
+          email: displayEmail,
+          displayName,
+          role: data.role || (isMaster ? 'OWNER' : 'STAFF'),
+          isMasterDevice: isMaster,
           deviceInfo: data.deviceInfo || {
             deviceName: 'Unknown Device',
             browser: 'Browser',
@@ -292,13 +296,25 @@ export class DeviceSessionService {
           sessionId,
           targetUid,
           targetDeviceId,
-          reason: reason || 'Session terminated by Master Owner'
+          reason: reason || 'Session terminated by Parvish Kan (Digital Marketing)'
         })
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = {};
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+        } catch {
+          data = { error: 'Invalid JSON response from server' };
+        }
+      } else {
+        const text = await res.text();
+        data = { error: text || `Server returned error (${res.status})` };
+      }
+
       if (!res.ok) {
-        return { success: false, message: data.error || 'Failed to revoke session.' };
+        return { success: false, message: data.error || data.message || `Failed to revoke session (${res.status}).` };
       }
 
       return { success: true, message: data.message || 'Session revoked successfully.' };

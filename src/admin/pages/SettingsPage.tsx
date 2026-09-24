@@ -1,27 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Users, Shield, Clock, PlusCircle, Laptop } from 'lucide-react';
 import StaffStats from '../components/staff/StaffStats';
 import StaffTable, { StaffItem } from '../components/staff/StaffTable';
 import StaffForm from '../components/staff/StaffForm';
 import PermissionMatrix from '../components/staff/PermissionMatrix';
 import ActivityLogs from '../components/staff/ActivityLogs';
-import ConfirmationModal from '../components/qr/ConfirmationModal';
 import DeviceSessionManagement from '../components/staff/DeviceSessionManagement';
-
-const initialMockStaff: StaffItem[] = [
-  { id: 'usr-1', name: 'Farvish (Master Owner)', email: 'farvishedits@gmail.com', role: 'OWNER', status: 'ACTIVE', lastActive: 'Just Now' },
-  { id: 'usr-2', name: 'Arun Kumar', email: 'arun@anukrishnamall.com', role: 'ADMIN', status: 'ACTIVE', lastActive: '5 mins ago' },
-  { id: 'usr-3', name: 'Priya Sharma', email: 'priya@anukrishnamall.com', role: 'MANAGER', status: 'ACTIVE', lastActive: '12 mins ago' },
-  { id: 'usr-4', name: 'Staff Counter #1', email: 'counter1@anukrishnamall.com', role: 'STAFF', status: 'ACTIVE', lastActive: '2 mins ago' },
-  { id: 'usr-5', name: 'Staff Counter #2', email: 'counter2@anukrishnamall.com', role: 'STAFF', status: 'ACTIVE', lastActive: '18 mins ago' },
-  { id: 'usr-6', name: 'Audit Supervisor', email: 'auditor@anukrishnamall.com', role: 'VIEWER', status: 'INACTIVE', lastActive: 'Yesterday' },
-];
+import { db, collections } from '../../services/firebase';
+import { collection, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { MASTER_OWNER_UID, MASTER_OWNER_EMAIL } from '../../services/deviceSessionService';
+import { ActivityLogger } from '../../services/activityLogger';
+import { StaffRole } from '../components/staff/RoleBadge';
 
 export const SettingsPage: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'STAFF' | 'MATRIX' | 'LOGS' | 'DEVICES'>('STAFF');
-  const [staffList, setStaffList] = useState<StaffItem[]>(initialMockStaff);
+  const [staffList, setStaffList] = useState<StaffItem[]>([]);
   const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
   const [staffToEdit, setStaffToEdit] = useState<StaffItem | null>(null);
+
+  // Subscribe to real Firestore /admins collection
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, collections.ADMINS), (snap) => {
+      const items: StaffItem[] = snap.docs.map((docSnap) => {
+        const data = docSnap.data();
+        const isMaster = docSnap.id === MASTER_OWNER_UID || data.role === 'OWNER' || data.email?.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase();
+
+        return {
+          id: docSnap.id,
+          name: isMaster ? 'Parvish Kan' : (data.displayName || data.name || data.email?.split('@')[0] || 'Staff Member'),
+          email: isMaster ? 'parvish@anukrishnamall.com' : (data.email || 'admin@anukrishnamall.com').replace(/[\[\n]/g, ''),
+          role: (data.role || (isMaster ? 'OWNER' : 'STAFF')) as StaffRole,
+          status: (data.status || 'ACTIVE') as 'ACTIVE' | 'INACTIVE',
+          lastActive: isMaster ? 'Active now' : 'Registered'
+        };
+      });
+
+      // Sort: Master Owner first
+      items.sort((a, b) => (a.role === 'OWNER' ? -1 : b.role === 'OWNER' ? 1 : 0));
+      setStaffList(items);
+    }, (err) => {
+      console.warn('Live admins subscription error:', err);
+    });
+
+    return () => unsub();
+  }, []);
 
   // Stats calculation
   const total = staffList.length;
@@ -39,21 +61,55 @@ export const SettingsPage: React.FC = () => {
     setIsStaffFormOpen(true);
   };
 
-  const handleSaveStaff = (data: Partial<StaffItem>) => {
-    if (data.id) {
-      setStaffList((prev) =>
-        prev.map((s) => (s.id === data.id ? ({ ...s, ...data } as StaffItem) : s))
-      );
-    } else {
-      const newMember: StaffItem = {
-        id: `usr-${Date.now()}`,
-        name: data.name || 'New Staff Member',
-        email: data.email || 'staff@anukrishnamall.com',
-        role: data.role || 'STAFF',
-        status: data.status || 'ACTIVE',
-        lastActive: 'Just Inviting'
-      };
-      setStaffList((prev) => [newMember, ...prev]);
+  const handleSaveStaff = async (data: Partial<StaffItem>) => {
+    try {
+      if (data.id) {
+        if (data.id === MASTER_OWNER_UID) {
+          alert('Master Owner account role cannot be modified.');
+          return;
+        }
+
+        const staffRef = doc(db, collections.ADMINS, data.id);
+        await updateDoc(staffRef, {
+          role: data.role || 'STAFF',
+          status: data.status || 'ACTIVE',
+          updatedAt: serverTimestamp()
+        });
+
+        await ActivityLogger.log(
+          'ROLE_CHANGED',
+          'Admin account role updated',
+          'Parvish Kan',
+          {
+            module: 'Staff Administration',
+            status: 'SUCCESS',
+            details: `Updated role for ${data.email || data.id} to ${data.role} (${data.status})`
+          }
+        );
+      } else {
+        const newDoc = await addDoc(collection(db, collections.ADMINS), {
+          displayName: data.name || 'Staff Member',
+          email: data.email || 'staff@anukrishnamall.com',
+          role: data.role || 'STAFF',
+          status: data.status || 'ACTIVE',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        await ActivityLogger.log(
+          'ADMIN_CREATED',
+          'Admin account created',
+          'Parvish Kan',
+          {
+            module: 'Staff Administration',
+            status: 'SUCCESS',
+            details: `Created new staff account: ${data.name} (${data.email}) as ${data.role} [${newDoc.id}]`
+          }
+        );
+      }
+    } catch (err: any) {
+      console.error('Error saving staff member:', err);
+      alert(err?.message || 'Failed to save staff member. Please check Firestore permissions.');
     }
   };
 

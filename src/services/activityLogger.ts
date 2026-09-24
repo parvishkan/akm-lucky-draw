@@ -3,6 +3,7 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 export type ActivityLogType =
   | 'LOGIN'
+  | 'LOGOUT'
   | 'NEW_DEVICE'
   | 'SESSION_REVOKED'
   | 'STAFF_DISABLED'

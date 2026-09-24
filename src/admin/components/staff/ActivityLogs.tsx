@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Eye, Search, ShieldCheck } from 'lucide-react';
 import ActivityLogDetails from './ActivityLogDetails';
 import { db, collections } from '../../../services/firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { MASTER_OWNER_UID, MASTER_OWNER_EMAIL } from '../../../services/deviceSessionService';
 
 export interface ActivityLogItem {
   id: string;
@@ -17,47 +18,68 @@ export interface ActivityLogItem {
   device: string;
 }
 
-const mockActivityLogs: ActivityLogItem[] = [
-  { id: 'log-1', time: '11:42 AM', user: 'Senior Admin', action: 'Generated 500 Tokens', module: 'Token Management', status: 'SUCCESS', description: 'Batch #2026-08 issued for billing counters.', ipAddress: '192.168.1.104', device: 'Chrome 128 / Windows 11' },
-  { id: 'log-2', time: '11:48 AM', user: 'Mall Manager', action: 'Marked Claim as Completed', module: 'Claims', status: 'SUCCESS', description: 'Fulfilled Grand Gold Coin for Claim ID CLM-8F42K.', ipAddress: '192.168.1.112', device: 'Safari / iOS 17' },
-  { id: 'log-3', time: '12:05 PM', user: 'Senior Admin', action: 'Updated Prize Quantity', module: 'Prize Management', status: 'SUCCESS', description: 'Increased Diamond Voucher pool stock to 15 units.', ipAddress: '192.168.1.104', device: 'Chrome 128 / Windows 11' },
-  { id: 'log-4', time: '12:20 PM', user: 'Staff Counter #1', action: 'Verified Winner Token', module: 'Winners', status: 'SUCCESS', description: 'Authenticated Token AKM-DW-26-A7L9Q at Help Desk.', ipAddress: '192.168.1.130', device: 'Edge / Windows 11' },
-];
-
 export const ActivityLogs: React.FC = () => {
-  const [logs, setLogs] = useState<ActivityLogItem[]>(mockActivityLogs);
+  const [logs, setLogs] = useState<ActivityLogItem[]>([]);
   const [selectedLog, setSelectedLog] = useState<ActivityLogItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModule, setSelectedModule] = useState('ALL');
 
   useEffect(() => {
     const colRef = collection(db, collections.ACTIVITY_LOGS);
-    const unsubscribe = onSnapshot(colRef, (snap) => {
-      if (!snap.empty) {
-        const liveItems: ActivityLogItem[] = snap.docs.map((d) => {
-          const data = d.data();
-          let timeStr = 'Today';
-          if (data.timestamp?.toDate) {
-            try {
-              timeStr = data.timestamp.toDate().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-            } catch {
-              timeStr = 'Today';
-            }
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(100));
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const EXCLUDED_TYPES = new Set(['NEW_WINNER', 'PRIZE_CLAIMED', 'TOKEN_VERIFIED', 'QR_SCAN', 'GIFT_ADDED']);
+      const EXCLUDED_MODULES = new Set(['Token Management', 'Tokens', 'Prize Management', 'Prizes', 'Claims', 'Winners', 'Customer']);
+
+      const liveItems: ActivityLogItem[] = [];
+
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        const type = (data.type || '').toUpperCase();
+        const mod = data.module || 'Security';
+        const title = data.title || '';
+
+        // Exclude customer/campaign transaction logs
+        if (EXCLUDED_TYPES.has(type) || EXCLUDED_MODULES.has(mod)) return;
+        if (/prize|token|claim|winner/i.test(title) && !/session|admin|role|account|auth/i.test(title)) return;
+
+        let timeStr = 'Just now';
+        if (data.timestamp?.toDate) {
+          try {
+            timeStr = data.timestamp.toDate().toLocaleString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
+          } catch {
+            timeStr = 'Just now';
           }
-          return {
-            id: d.id,
-            time: timeStr,
-            user: data.user || data.actorEmail || 'Admin',
-            action: data.title || data.type || 'Action',
-            module: data.module || 'Security',
-            status: data.status || 'SUCCESS',
-            description: data.details || data.title || 'Security audit entry',
-            ipAddress: data.ip || '127.0.0.1',
-            device: data.targetDeviceId || 'Admin Device'
-          };
+        }
+
+        const isOwner = data.actorUid === MASTER_OWNER_UID ||
+          data.user?.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase() ||
+          data.actorEmail?.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase() ||
+          data.user?.includes('Farvish');
+
+        const userDisplay = isOwner ? 'Parvish Kan' : (data.user || data.actorEmail || 'Admin');
+
+        liveItems.push({
+          id: d.id,
+          time: timeStr,
+          user: userDisplay,
+          action: data.title || data.type || 'Action',
+          module: data.module || 'Authentication / Security',
+          status: data.status || 'SUCCESS',
+          description: data.details || data.title || 'Security audit entry',
+          ipAddress: data.ip || '127.0.0.1',
+          device: data.targetDeviceId || 'Admin Device'
         });
-        setLogs([...liveItems, ...mockActivityLogs]);
-      }
+      });
+
+      setLogs(liveItems);
     }, (err) => {
       console.warn('Live activityLogs subscription warning:', err);
     });
@@ -98,11 +120,10 @@ export const ActivityLogs: React.FC = () => {
           onChange={(e) => setSelectedModule(e.target.value)}
           className="px-3 py-2 bg-[#0D021A] border border-[#FFD700]/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#FFD700]"
         >
-          <option value="ALL">All Modules</option>
-          <option value="Token Management">Token Management</option>
-          <option value="Prize Management">Prize Management</option>
-          <option value="Claims">Claims</option>
-          <option value="Winners">Winners</option>
+          <option value="ALL">All System Modules</option>
+          <option value="Authentication / Security">Authentication / Security</option>
+          <option value="Device & Session Management">Device & Session Management</option>
+          <option value="Staff Administration">Staff Administration</option>
         </select>
       </div>
 
@@ -146,6 +167,15 @@ export const ActivityLogs: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Clean Empty State */}
+        {filteredLogs.length === 0 && (
+          <div className="p-12 text-center space-y-2">
+            <Clock className="w-10 h-10 text-[#FFD700]/40 mx-auto" />
+            <h4 className="text-sm font-bold text-white">No system activity logs found.</h4>
+            <p className="text-xs text-[#A0A0A0]">Authentication, session, device, and security events will appear here in real time.</p>
+          </div>
+        )}
       </div>
 
       {/* Log Details Drawer */}

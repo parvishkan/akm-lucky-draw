@@ -18,7 +18,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className }) => {
   };
 
   const labels = {
-    OWNER: 'Owner',
+    OWNER: 'Digital Marketing',
     ADMIN: 'Administrator',
     MANAGER: 'Manager',
     STAFF: 'Staff',

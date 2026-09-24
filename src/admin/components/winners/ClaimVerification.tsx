@@ -132,7 +132,7 @@ export const ClaimVerification: React.FC<ClaimVerificationProps> = ({
                   <span>✓ Already Claimed</span>
                 </div>
                 <p className="text-xs text-white">
-                  This prize was already collected on <strong className="text-[#FFD700]">{matchedClaim.claimedAt || '08 Aug 2026, 11:48 AM'}</strong> and verified by <strong className="text-[#FFD700]">{matchedClaim.verifiedBy || 'Senior Admin'}</strong>.
+                  This prize was already collected on <strong className="text-[#FFD700]">{matchedClaim.claimedAt || 'Recently'}</strong> and verified by <strong className="text-[#FFD700]">{matchedClaim.verifiedBy || 'Authorized Staff'}</strong>.
                 </p>
                 <span className="text-[10px] text-emerald-300 font-mono block pt-1">
                   DUPLICATE CLAIM PROTECTION ACTIVE — HANDOVER DISABLED

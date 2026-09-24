@@ -59,11 +59,11 @@ export const PrintClaimSlip: React.FC<PrintClaimSlipProps> = ({ claim, onClose }
             </div>
             <div className="flex justify-between">
               <span>Claimed Timestamp:</span>
-              <span>{claim.claimedAt || '08 Aug 2026, 11:48 AM'}</span>
+              <span>{claim.claimedAt || 'Recently'}</span>
             </div>
             <div className="flex justify-between">
               <span>Verified By Staff:</span>
-              <span>{claim.verifiedBy || 'Senior Mall Admin'}</span>
+              <span>{claim.verifiedBy || 'Authorized Staff'}</span>
             </div>
           </div>
 

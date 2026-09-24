@@ -3,7 +3,7 @@ import { Clock, ShieldCheck, Flame, Pause, Play, RefreshCw } from 'lucide-react'
 
 export const CampaignActivity: React.FC = () => {
   const activities = [
-    { title: 'Customer Access Enabled', time: '08 Aug 2026, 11:30 AM', desc: 'Mall Manager turned ON mobile participation gate.' },
+    { title: 'Customer Access Enabled', time: '08 Aug 2026, 11:30 AM', desc: 'Authorized Admin turned ON mobile participation gate.' },
     { title: 'Campaign Parameters Updated', time: '08 Aug 2026, 09:15 AM', desc: 'Adjusted campaign dates for Diwali Festival shopping peak.' },
     { title: 'Print QR Posters Generated', time: '01 Oct 2026, 08:00 AM', desc: 'Exported A4 printable QR posters for 12 billing counters.' },
     { title: 'Diwali Campaign Officially Live', time: '01 Oct 2026, 07:00 AM', desc: 'Campaign status transitioned to LIVE.' },

@@ -2,23 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Laptop,
-  Shield,
   ShieldCheck,
-  AlertTriangle,
-  RefreshCw,
   Search,
   CheckCircle2,
   XCircle,
-  Clock,
   User,
-  Trash2,
   Sparkles,
   Info,
   Smartphone,
   Monitor
 } from 'lucide-react';
 import { DeviceSessionService, AdminSessionRecord, MASTER_OWNER_UID, MASTER_OWNER_EMAIL } from '../../../services/deviceSessionService';
-import { auth } from '../../../services/firebase';
 import RoleBadge from './RoleBadge';
 import ConfirmationModal from '../qr/ConfirmationModal';
 
@@ -44,13 +38,6 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
   // Real-time toast for newly discovered active sessions
   const [newSessionToast, setNewSessionToast] = useState<AdminSessionRecord | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-
-  // Demo cleanup tool state
-  const [isCleanupModalOpen, setIsCleanupModalOpen] = useState(false);
-  const [cleanupReport, setCleanupReport] = useState<any[] | null>(null);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [isCleaningAccounts, setIsCleaningAccounts] = useState(false);
-  const [cleanupMessage, setCleanupMessage] = useState<string | null>(null);
 
   // Helper to safely format Firestore timestamp
   const formatTime = (ts: any, fallback = 'Just now'): string => {
@@ -153,7 +140,7 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
     if (!sessionToRevoke) return;
 
     if (sessionToRevoke.isMasterDevice || sessionToRevoke.uid === MASTER_OWNER_UID) {
-      alert('CRITICAL SECURITY: The Master Owner Device is permanently protected and cannot be revoked.');
+      alert('CRITICAL SECURITY: The Master Device is permanently protected and cannot be revoked.');
       setSessionToRevoke(null);
       return;
     }
@@ -168,77 +155,8 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
     setIsRevoking(false);
     setSessionToRevoke(null);
 
-    if (res.success) {
-      // Session status will update automatically via real-time listener
-    } else {
+    if (!res.success) {
       alert(res.message || 'Failed to revoke session.');
-    }
-  };
-
-  // Demo Account Cleanup: Generate Report
-  const handleGenerateCleanupReport = async () => {
-    setIsGeneratingReport(true);
-    setCleanupMessage(null);
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
-      const idToken = await user.getIdToken();
-
-      const res = await fetch('/api/admin-cleanup', {
-        headers: { Authorization: `Bearer ${idToken}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setCleanupReport(data.report || []);
-      } else {
-        alert(data.error || 'Failed to generate audit report.');
-      }
-    } catch (err: any) {
-      alert(err?.message || 'Network error.');
-    } finally {
-      setIsGeneratingReport(false);
-    }
-  };
-
-  // Demo Account Cleanup: Execute cleanup of confirmed candidates
-  const handleExecuteCleanup = async () => {
-    if (!cleanupReport) return;
-    const candidates = cleanupReport.filter((r) => r.canDelete).map((r) => r.uid);
-
-    if (candidates.length === 0) {
-      alert('No test/demo account candidates found to clean.');
-      return;
-    }
-
-    if (!confirm(`Are you sure you want to permanently clean ${candidates.length} demo/orphaned account(s)? The Master Owner will NOT be affected.`)) {
-      return;
-    }
-
-    setIsCleaningAccounts(true);
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
-      const idToken = await user.getIdToken();
-
-      const res = await fetch('/api/admin-cleanup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ approvedUids: candidates })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setCleanupMessage(`Successfully cleaned ${data.cleanedCount} demo/orphaned account(s).`);
-        await handleGenerateCleanupReport();
-      } else {
-        alert(data.error || 'Failed to clean accounts.');
-      }
-    } catch (err: any) {
-      alert(err?.message || 'Error executing cleanup.');
-    } finally {
-      setIsCleaningAccounts(false);
     }
   };
 
@@ -346,16 +264,16 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
 
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-heading text-base sm:text-lg font-extrabold text-white">
-                  Master Owner Device
+                <span className="font-heading text-base sm:text-lg font-extrabold text-white uppercase tracking-wider">
+                  PARVISH KAN
                 </span>
                 <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-[#FFD700] text-[#0D021A] font-black text-[10px] uppercase tracking-wider shadow-sm">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>MASTER OWNER DEVICE — PROTECTED</span>
+                  <span>DIGITAL MARKETING • OWNER DEVICE</span>
                 </span>
               </div>
               <p className="text-xs text-[#A0A0A0]">
-                Permanent hardware-verified master device. Immunity active against remote deletion, revocation, or role downgrading.
+                Primary administrative hardware-verified session. Permanent protection active against remote deletion or revocation.
               </p>
             </div>
           </div>
@@ -363,8 +281,8 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
           {/* Master Device Quick Info Badge */}
           <div className="p-3 rounded-2xl bg-[#0D021A]/80 border border-[#FFD700]/30 flex items-center gap-4 text-xs font-mono shrink-0">
             <div>
-              <span className="text-[#A0A0A0] text-[10px] uppercase block">Owner Email</span>
-              <span className="text-[#FFD700] font-bold">{masterSession?.email || MASTER_OWNER_EMAIL}</span>
+              <span className="text-[#A0A0A0] text-[10px] uppercase block">Designation</span>
+              <span className="text-[#FFD700] font-bold">Digital Marketing</span>
             </div>
             <div className="border-l border-[#FFD700]/20 pl-4">
               <span className="text-[#A0A0A0] text-[10px] uppercase block">Device Status</span>
@@ -383,18 +301,6 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
             <Info className="w-3.5 h-3.5 text-[#FFD700] shrink-0" />
             <span>Only the Master Owner session has authorization to revoke or terminate other device sessions.</span>
           </div>
-
-          {/* Safe Demo Cleanup Trigger */}
-          <button
-            onClick={() => {
-              setIsCleanupModalOpen(true);
-              handleGenerateCleanupReport();
-            }}
-            className="px-3 py-1 rounded-xl bg-[#0D021A] border border-[#FFD700]/30 text-[#FFD700] text-xs font-bold hover:bg-[#FFD700]/10 transition-colors cursor-pointer self-start sm:self-auto flex items-center gap-1.5"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Audit Demo Accounts</span>
-          </button>
         </div>
 
       </div>
@@ -600,7 +506,7 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
                 {session.isMasterDevice ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#FFD700]">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>MASTER DEVICE — PROTECTED</span>
+                    <span>DIGITAL MARKETING • PROTECTED</span>
                   </span>
                 ) : session.status === 'ACTIVE' ? (
                   <button
@@ -619,9 +525,10 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
 
         {/* Empty State */}
         {filteredSessions.length === 0 && !isLoading && (
-          <div className="p-8 text-center space-y-2">
-            <Monitor className="w-8 h-8 text-[#A0A0A0] mx-auto opacity-50" />
-            <p className="text-xs text-[#A0A0A0]">No matching devices or sessions found.</p>
+          <div className="p-12 text-center space-y-2">
+            <Monitor className="w-10 h-10 text-[#FFD700]/40 mx-auto" />
+            <h4 className="text-sm font-bold text-white">No active devices or sessions found.</h4>
+            <p className="text-xs text-[#A0A0A0]">Active administrative logins will appear here automatically in real time.</p>
           </div>
         )}
 
@@ -637,122 +544,6 @@ export const DeviceSessionManagement: React.FC<DeviceSessionManagementProps> = (
         onConfirm={handleConfirmRevoke}
         onClose={() => setSessionToRevoke(null)}
       />
-
-      {/* 7. SAFE DEMO ACCOUNT CLEANUP MODAL */}
-      {isCleanupModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm select-none">
-          <div className="w-full max-w-2xl bg-[#1D0636] border border-[#FFD700]/40 rounded-3xl p-6 shadow-2xl space-y-5 text-left max-h-[90vh] overflow-y-auto">
-            
-            <div className="flex items-center justify-between border-b border-[#FFD700]/20 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#0D021A] border border-[#FFD700]/30 flex items-center justify-center text-[#FFD700]">
-                  <Trash2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-heading text-lg font-bold text-white">Safe Demo Account Audit & Cleanup</h3>
-                  <p className="text-[11px] text-[#A0A0A0]">Inspect and safely remove confirmed test/demo accounts before launch.</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsCleanupModalOpen(false)}
-                className="p-1.5 rounded-xl bg-[#0D021A] text-[#A0A0A0] hover:text-white border border-[#FFD700]/20"
-              >
-                ✕
-              </button>
-            </div>
-
-            {cleanupMessage && (
-              <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-bold">
-                ✓ {cleanupMessage}
-              </div>
-            )}
-
-            {isGeneratingReport ? (
-              <div className="p-8 text-center text-xs text-[#FFD700] space-y-2">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto" />
-                <p>Scanning Firebase Auth and Firestore /admins registry...</p>
-              </div>
-            ) : cleanupReport ? (
-              <div className="space-y-4">
-                <div className="overflow-x-auto rounded-2xl border border-[#FFD700]/20">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[#0D021A] text-[#D4AF37] font-mono text-[10px] uppercase">
-                        <th className="p-3">Email / Identifier</th>
-                        <th className="p-3">Role</th>
-                        <th className="p-3">Classification</th>
-                        <th className="p-3 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#FFD700]/10">
-                      {cleanupReport.map((row: any, i: number) => (
-                        <tr key={i} className="hover:bg-[#0D021A]/40">
-                          <td className="p-3 font-mono">
-                            <span className="text-white block">{row.email}</span>
-                            <span className="text-[9px] text-[#A0A0A0]">{row.uid}</span>
-                          </td>
-                          <td className="p-3 text-[#FFD700]">{row.role}</td>
-                          <td className="p-3">
-                            {row.isProtectedMaster ? (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#FFD700] text-[#0D021A]">
-                                🛡 MASTER OWNER
-                              </span>
-                            ) : row.canDelete ? (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-950 border border-amber-500/40 text-amber-400">
-                                ⚠️ DEMO / ORPHAN
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-950 border border-emerald-500/40 text-emerald-400">
-                                ACTIVE STAFF
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-right font-mono text-[10px]">
-                            {row.isProtectedMaster ? (
-                              <span className="text-[#FFD700]">PROTECTED</span>
-                            ) : row.canDelete ? (
-                              <span className="text-amber-400 font-bold">READY TO CLEAN</span>
-                            ) : (
-                              <span className="text-emerald-400">KEEP</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-[11px] text-[#A0A0A0]">
-                    Deletable Demo Candidates: <strong>{cleanupReport.filter((r) => r.canDelete).length}</strong>
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleGenerateCleanupReport}
-                      className="px-3 py-2 rounded-xl bg-[#0D021A] border border-[#FFD700]/30 text-white text-xs font-bold hover:bg-[#FFD700]/10"
-                    >
-                      Refresh
-                    </button>
-
-                    {cleanupReport.some((r) => r.canDelete) && (
-                      <button
-                        onClick={handleExecuteCleanup}
-                        disabled={isCleaningAccounts}
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 text-white text-xs font-bold hover:shadow-lg transition-all cursor-pointer"
-                      >
-                        {isCleaningAccounts ? 'Cleaning...' : 'Clean Confirmed Demo Accounts'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-          </div>
-        </div>
-      )}
 
     </div>
   );

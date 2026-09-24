@@ -53,7 +53,7 @@ export const WinnerDetailsPanel: React.FC<WinnerDetailsPanelProps> = ({ winner, 
   const activityLogs = [
     { title: 'Lucky Draw Box Selection', time: formattedWonAt, desc: `Customer opened box and won ${winner.prizeName}.` },
     { title: 'Claim Pass Generated', time: formattedWonAt, desc: `Unique Claim ID ${winner.claimId} generated for Help Desk verification.` },
-    ...(formattedClaimedAt ? [{ title: 'Prize Handover Completed', time: formattedClaimedAt, desc: `Verified & fulfilled at counter by ${winner.verifiedBy || 'Senior Admin'}.` }] : []),
+    ...(formattedClaimedAt ? [{ title: 'Prize Handover Completed', time: formattedClaimedAt, desc: `Verified & fulfilled at counter by ${winner.verifiedBy || 'Authorized Staff'}.` }] : []),
   ];
 
   return (

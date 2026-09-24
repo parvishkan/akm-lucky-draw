@@ -28,6 +28,8 @@ import QRManagementPage from './pages/QRManagementPage';
 import { GlobalSearch } from './components/GlobalSearch';
 import { NotificationPanel } from './components/NotificationPanel';
 
+import { MASTER_OWNER_UID, MASTER_OWNER_EMAIL } from '../services/deviceSessionService';
+
 export type AdminTab = 'DASHBOARD' | 'QR_MANAGEMENT' | 'TOKENS' | 'PRIZES' | 'WINNERS' | 'CLAIMS' | 'ANALYTICS' | 'SETTINGS';
 
 interface AdminLayoutProps {
@@ -38,6 +40,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const currentUser = AdminAuthService.getCurrentUser();
+  const isMaster = currentUser?.uid === MASTER_OWNER_UID || currentUser?.email?.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase();
+  const adminDisplayName = isMaster ? 'PARVISH KAN' : (currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Admin');
+  const adminDesignation = isMaster ? 'Digital Marketing' : 'Administrator';
+  const adminDisplayEmail = isMaster ? 'parvish@anukrishnamall.com' : (currentUser?.email || 'admin@anukrishnamall.com').replace(/[\[\n]/g, '');
 
   // Sync with window.location.hash for external links / backward compatibility
   useEffect(() => {
@@ -141,8 +149,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
                 <User className="w-4 h-4" />
               </div>
               <div className="hidden sm:block text-xs">
-                <span className="font-bold text-[#FFFFFF] block leading-none">Mall Manager</span>
-                <span className="text-[10px] text-[#D4AF37] font-mono">Senior Admin</span>
+                <span className="font-bold text-[#FFFFFF] block leading-none">{adminDisplayName}</span>
+                <span className="text-[10px] text-[#D4AF37] font-mono">{adminDesignation}</span>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-[#A0A0A0] hidden sm:block" />
             </button>
@@ -157,9 +165,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
                   className="absolute right-0 mt-2 w-48 bg-[#1D0636] border border-[#FFD700]/30 rounded-2xl p-2 shadow-2xl z-40 text-xs text-left"
                 >
                   <div className="px-3 py-2 border-b border-[#FFD700]/15">
-                    <span className="font-bold text-[#FFFFFF] block">{APP_CONFIG.brand.mallName}</span>
+                    <span className="font-bold text-[#FFFFFF] block">{adminDisplayName}</span>
                     <span className="text-[10px] text-[#A0A0A0] truncate block">
-                      {AdminAuthService.getCurrentUser()?.email || 'admin@anukrishnamall.com'}
+                      {adminDisplayEmail}
                     </span>
                   </div>
                   <button

@@ -62,11 +62,11 @@ export const ClaimSuccess: React.FC<ClaimSuccessProps> = ({
         </div>
         <div className="flex justify-between border-b border-[#FFD700]/10 pb-1.5">
           <span className="text-[#A0A0A0]">Claimed Time:</span>
-          <span className="text-white">{claim.claimedAt || '08 Aug 2026, 11:48 AM'}</span>
+          <span className="text-white">{claim.claimedAt || 'Recently'}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-[#A0A0A0]">Verified By:</span>
-          <span className="text-[#D4AF37] font-bold">{claim.verifiedBy || 'Senior Admin'}</span>
+          <span className="text-[#D4AF37] font-bold">{claim.verifiedBy || 'Authorized Staff'}</span>
         </div>
       </div>
 

@@ -130,20 +130,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 7. Record Security Audit Log
+    const callerName = (callerUid === MASTER_OWNER_UID || callerEmail.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase()) ? 'Parvish Kan' : callerEmail;
     await db.collection('activityLogs').add({
       type: 'SESSION_REVOKED',
-      title: `Admin session revoked for ${targetUid} [${targetDeviceId || sessionId}]`,
-      user: callerEmail,
+      title: 'Admin Session Revoked',
+      user: callerName,
       actorUid: callerUid,
       actorEmail: callerEmail,
       targetUid,
       targetDeviceId: targetDeviceId || null,
       status: 'SUCCESS',
-      module: 'Device & Session Management',
-      details: reason || 'Session terminated by Master Owner',
+      module: 'Authentication / Security',
+      details: reason || 'Session terminated by Parvish Kan (Digital Marketing)',
       timestamp: FieldValue.serverTimestamp()
     });
 
+    res.setHeader('Content-Type', 'application/json');
     return res.status(200).json({
       success: true,
       message: 'Session revoked successfully. Device tokens invalidated.'
@@ -151,6 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (err: any) {
     console.error('Error in /api/revoke-session:', err);
+    res.setHeader('Content-Type', 'application/json');
     return res.status(500).json({
       error: err?.message || 'Internal Server Error while revoking session.'
     });

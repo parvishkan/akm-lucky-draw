@@ -66,13 +66,19 @@ export const StaffTable: React.FC<StaffTableProps> = ({ staffList, onEditStaff }
                 </td>
 
                 <td className="py-3 px-4 text-right">
-                  <button
-                    onClick={() => onEditStaff(user)}
-                    className="px-3 py-1.5 rounded-lg bg-[#0D021A] border border-[#FFD700]/30 text-[#FFD700] hover:bg-[#FFD700]/20 text-[11px] font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit Role</span>
-                  </button>
+                  {user.role === 'OWNER' ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#FFD700] bg-[#FFD700]/10 border border-[#FFD700]/30 px-2.5 py-1 rounded-xl">
+                      PROTECTED
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => onEditStaff(user)}
+                      className="px-3 py-1.5 rounded-lg bg-[#0D021A] border border-[#FFD700]/30 text-[#FFD700] hover:bg-[#FFD700]/20 text-[11px] font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Role</span>
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -96,16 +102,29 @@ export const StaffTable: React.FC<StaffTableProps> = ({ staffList, onEditStaff }
             </div>
 
             <div className="pt-2 border-t border-[#FFD700]/10 flex justify-end">
-              <button
-                onClick={() => onEditStaff(user)}
-                className="px-3 py-1.5 rounded-lg bg-[#1D0636] border border-[#FFD700]/30 text-[#FFD700] text-xs font-semibold"
-              >
-                Edit Role
-              </button>
+              {user.role === 'OWNER' ? (
+                <span className="text-[10px] font-mono font-bold text-[#FFD700]">PROTECTED OWNER</span>
+              ) : (
+                <button
+                  onClick={() => onEditStaff(user)}
+                  className="px-3 py-1.5 rounded-lg bg-[#1D0636] border border-[#FFD700]/30 text-[#FFD700] text-xs font-semibold"
+                >
+                  Edit Role
+                </button>
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Empty State */}
+      {staffList.length === 0 && (
+        <div className="p-12 text-center space-y-2">
+          <User className="w-10 h-10 text-[#FFD700]/40 mx-auto" />
+          <h4 className="text-sm font-bold text-white">No staff accounts found.</h4>
+          <p className="text-xs text-[#A0A0A0]">Authorized administrative staff members will appear here.</p>
+        </div>
+      )}
 
     </div>
   );
