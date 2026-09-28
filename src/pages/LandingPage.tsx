@@ -21,6 +21,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
   const [wonPrize, setWonPrize] = useState<Prize | null>(null);
   const [claimId, setClaimId] = useState<string>('');
   const [isZooming, setIsZooming] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
   const [campaignState, setCampaignState] = useState<CampaignData>({
     name: 'AKM LUCKY DRAW',
     description: '',
@@ -95,6 +96,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
 
   const handleClaimConfirmed = () => {
     setViewState('FINAL_CLAIM_PAUSE');
+  };
+
+  const handleNew = () => {
+    setVerifiedTokenData(null);
+    setSelectedBoxId(null);
+    setWonPrize(null);
+    setClaimId('');
+    setIsZooming(false);
+    setResetKey((prev) => prev + 1);
+    setViewState('VERIFY_SCREEN');
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
 
   return (
@@ -236,7 +248,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
         {/* VIEW 3: Token Verification Screen */}
         {viewState === 'VERIFY_SCREEN' && (
           <motion.div
-            key="verify-screen"
+            key={`verify-screen-${resetKey}`}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -244,7 +256,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
             className="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center py-6 px-4"
           >
             <div className="my-auto w-full flex justify-center">
-              <TokenVerificationScreen onSuccess={handleVerificationSuccess} />
+              <TokenVerificationScreen key={`token-input-${resetKey}`} onSuccess={handleVerificationSuccess} />
             </div>
           </motion.div>
         )}
@@ -315,6 +327,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
                 prize={wonPrize}
                 claimId={claimId}
                 onClaimConfirmed={handleClaimConfirmed}
+                onNew={handleNew}
               />
             </div>
           </motion.div>
@@ -361,6 +374,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartClick }) => {
               <p className="text-xs text-gray-300 font-sans leading-relaxed">
                 Customer is ready to present screen at Anu Krishna Mall Help Desk to collect reward!
               </p>
+
+              <motion.button
+                onClick={handleNew}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-akm-gold-light via-akm-gold-royal to-akm-gold-bronze text-akm-purple-deepest font-extrabold text-sm tracking-widest uppercase flex items-center justify-center gap-2 border border-amber-200 shadow-gold-glow cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-akm-purple-deepest" />
+                <span>NEW</span>
+              </motion.button>
 
               <button
                 onClick={() => setViewState('PRIZE_CLAIM')}

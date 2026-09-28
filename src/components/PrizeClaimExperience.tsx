@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, QrCode, Download, CheckCircle2, Building2 } from 'lucide-react';
+import { ShieldCheck, QrCode, Download, CheckCircle2, Building2, Sparkles } from 'lucide-react';
 import { TokenVerificationData } from '../types';
 import { Prize } from '../data/prizes';
 import { APP_CONFIG } from '../constants/appConfig';
@@ -11,13 +11,15 @@ interface PrizeClaimExperienceProps {
   prize: Prize;
   claimId: string;
   onClaimConfirmed: () => void;
+  onNew?: () => void;
 }
 
 export const PrizeClaimExperience: React.FC<PrizeClaimExperienceProps> = ({
   tokenData,
   prize,
   claimId,
-  onClaimConfirmed
+  onClaimConfirmed,
+  onNew
 }) => {
   const [downloaded, setDownloaded] = useState(false);
 
@@ -167,6 +169,25 @@ export const PrizeClaimExperience: React.FC<PrizeClaimExperienceProps> = ({
           <span>{downloaded ? 'Pass Saved to Device!' : 'Save Pass / Screenshot'}</span>
         </motion.button>
       </motion.div>
+
+      {/* 4. Counter Mode Reset Action Button */}
+      {onNew && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
+        >
+          <motion.button
+            onClick={onNew}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="w-full py-4 rounded-2xl bg-[#1D0636]/90 hover:bg-[#2A094D] border-2 border-akm-gold-royal/70 hover:border-akm-gold-royal text-akm-gold-royal hover:text-white font-extrabold text-sm tracking-widest uppercase flex items-center justify-center gap-2 shadow-gold-glow transition-all duration-200 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-akm-gold-royal" />
+            <span>NEW</span>
+          </motion.button>
+        </motion.div>
+      )}
 
     </div>
   );
