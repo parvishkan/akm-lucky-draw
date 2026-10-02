@@ -27,7 +27,18 @@ export const App: React.FC = () => {
   // Monitor Firebase Authentication & Authorization State
   useEffect(() => {
     const unsubscribe = AdminAuthService.onAuthChange(async (user) => {
-      if (user) {
+      // Security Hardening: On page refresh / initial load, reject silent restoration of cached sessions!
+      // Admin MUST actively authenticate in this browser session via Email + Password.
+      if (user && !AdminAuthService.isCurrentSessionAuthenticated()) {
+        await AdminAuthService.purgePersistedAuth();
+        setAuthUser(null);
+        setIsAuthorizedAdmin(false);
+        setAdminProfile(null);
+        setIsCheckingAuth(false);
+        return;
+      }
+
+      if (user && AdminAuthService.isCurrentSessionAuthenticated()) {
         setAuthUser(user);
         const check = await AdminAuthService.verifyAdminAuthorization(user);
         if (check.isAuthorized && check.profile) {
@@ -94,7 +105,12 @@ export const App: React.FC = () => {
   };
 
   // Handle Admin Login Success
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (user?: User, profile?: AdminProfile) => {
+    if (user) setAuthUser(user);
+    if (profile) {
+      setAdminProfile(profile);
+      setIsAuthorizedAdmin(true);
+    }
     window.history.pushState({}, '', '/admin');
     setPathname('/admin');
   };

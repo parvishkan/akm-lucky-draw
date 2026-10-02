@@ -2,16 +2,25 @@ import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Mail, ShieldCheck, ArrowLeft, KeyRound, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { APP_CONFIG } from '../constants/appConfig';
-import { AdminAuthService } from '../services/adminAuthService';
+import { AdminAuthService, AdminProfile } from '../services/adminAuthService';
+import { User } from 'firebase/auth';
 
 interface AdminLoginProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user?: User, profile?: AdminProfile) => void;
   onBackToCustomerSite: () => void;
 }
 
+const REMEMBERED_EMAIL_KEY = 'akm_admin_remembered_email';
+
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackToCustomerSite }) => {
-  const [username, setUsername] = useState('admin@anukrishnamall.com');
-  const [password, setPassword] = useState('••••••••••••');
+  const [username, setUsername] = useState(() => {
+    try {
+      return localStorage.getItem(REMEMBERED_EMAIL_KEY) || 'admin@anukrishnamall.com';
+    } catch {
+      return 'admin@anukrishnamall.com';
+    }
+  });
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,7 +37,20 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
     setIsSubmitting(false);
 
     if (res.success) {
-      onLoginSuccess();
+      if (rememberMe) {
+        try {
+          localStorage.setItem(REMEMBERED_EMAIL_KEY, username.trim());
+        } catch {
+          // ignore
+        }
+      } else {
+        try {
+          localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+        } catch {
+          // ignore
+        }
+      }
+      onLoginSuccess(res.user, res.profile);
     } else {
       alert(res.error || 'Authentication failed. Please check your credentials.');
     }

@@ -1,5 +1,12 @@
 import { auth, db, collections } from './firebase';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+  inMemoryPersistence,
+  User
+} from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { DeviceSessionService, MASTER_OWNER_UID, MASTER_OWNER_EMAIL } from './deviceSessionService';
 import { ActivityLogger } from './activityLogger';
@@ -12,6 +19,35 @@ export interface AdminProfile {
 }
 
 export class AdminAuthService {
+  /**
+   * Tracks whether the admin has actively logged in during this in-memory page lifetime.
+   * Resets to false upon page reload / refresh to mandate credentials re-entry.
+   */
+  private static isSessionAuthenticated = false;
+
+  /**
+   * Returns whether the admin was authenticated within this active page lifetime.
+   */
+  static isCurrentSessionAuthenticated(): boolean {
+    return this.isSessionAuthenticated;
+  }
+
+  /**
+   * Purges any persisted Firebase Auth session (from browser storage or prior session)
+   * and enforces strict in-memory persistence.
+   */
+  static async purgePersistedAuth(): Promise<void> {
+    this.isSessionAuthenticated = false;
+    try {
+      await setPersistence(auth, inMemoryPersistence);
+      if (auth.currentUser) {
+        await signOut(auth);
+      }
+    } catch (err) {
+      console.warn('Purge persisted auth notice:', err);
+    }
+  }
+
   /**
    * Verifies if an authenticated user's UID exists in the /admins/{uid} collection
    * and has an ACTIVE status.
@@ -39,11 +75,19 @@ export class AdminAuthService {
    */
   static async login(email: string, password: string): Promise<{ success: boolean; user?: User; profile?: AdminProfile; error?: string }> {
     try {
+      // Enforce in-memory session persistence so credentials and tokens are strictly non-persisted on refresh
+      try {
+        await setPersistence(auth, inMemoryPersistence);
+      } catch (persistErr) {
+        console.warn('Set inMemoryPersistence warning:', persistErr);
+      }
+
       const res = await signInWithEmailAndPassword(auth, email, password);
       const authCheck = await this.verifyAdminAuthorization(res.user);
 
       if (!authCheck.isAuthorized || !authCheck.profile) {
         await signOut(auth);
+        this.isSessionAuthenticated = false;
         return {
           success: false,
           error: 'Access Denied: Your account is authenticated but does not possess active administrative privileges.'
@@ -72,14 +116,19 @@ export class AdminAuthService {
         );
       } catch (sessionErr: any) {
         await signOut(auth);
+        this.isSessionAuthenticated = false;
         return {
           success: false,
           error: sessionErr?.message || 'Access Denied: Session revoked or device blocked.'
         };
       }
 
+      // Mark session as actively authenticated in this page session
+      this.isSessionAuthenticated = true;
+
       return { success: true, user: res.user, profile: authCheck.profile };
     } catch (err: any) {
+      this.isSessionAuthenticated = false;
       console.warn('Firebase Auth failure for Admin console:', err?.message || err);
       return {
         success: false,
@@ -90,6 +139,7 @@ export class AdminAuthService {
 
   static async logout(): Promise<void> {
     try {
+      this.isSessionAuthenticated = false;
       const user = auth.currentUser;
       if (user) {
         const isMasterOwner = user.uid === MASTER_OWNER_UID || user.email?.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase();
