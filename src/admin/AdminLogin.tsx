@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Mail, ShieldCheck, ArrowLeft, KeyRound, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, ArrowLeft, KeyRound, Sparkles, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { APP_CONFIG } from '../constants/appConfig';
 import { AdminAuthService, AdminProfile } from '../services/adminAuthService';
 import { User } from 'firebase/auth';
@@ -15,15 +15,16 @@ const REMEMBERED_EMAIL_KEY = 'akm_admin_remembered_email';
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackToCustomerSite }) => {
   const [username, setUsername] = useState(() => {
     try {
-      return localStorage.getItem(REMEMBERED_EMAIL_KEY) || 'admin@anukrishnamall.com';
+      return localStorage.getItem(REMEMBERED_EMAIL_KEY) || '';
     } catch {
-      return 'admin@anukrishnamall.com';
+      return '';
     }
   });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
@@ -32,6 +33,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
     e.preventDefault();
     if (!username.trim() || !password.trim()) return;
 
+    setErrorMessage(null);
     setIsSubmitting(true);
     const res = await AdminAuthService.login(username.trim(), password.trim());
     setIsSubmitting(false);
@@ -52,7 +54,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
       }
       onLoginSuccess(res.user, res.profile);
     } else {
-      alert(res.error || 'Authentication failed. Please check your credentials.');
+      setErrorMessage(res.error || 'Invalid email or password. Please check your credentials and try again.');
     }
   };
 
@@ -138,8 +140,11 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin@anukrishnamall.com"
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  placeholder="Enter admin email"
                   required
                   className="w-full pl-10 pr-4 py-3 bg-[#0D021A] border border-[#FFD700]/30 rounded-xl text-xs text-[#FFFFFF] placeholder-[#A0A0A0]/60 focus:outline-none focus:border-[#FFD700] focus:shadow-[0_0_15px_rgba(255,215,0,0.3)] transition-all font-sans"
                 />
@@ -158,7 +163,10 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                   placeholder="••••••••••••"
                   required
                   className="w-full pl-10 pr-10 py-3 bg-[#0D021A] border border-[#FFD700]/30 rounded-xl text-xs text-[#FFFFFF] placeholder-[#A0A0A0]/60 focus:outline-none focus:border-[#FFD700] focus:shadow-[0_0_15px_rgba(255,215,0,0.3)] transition-all font-mono"
@@ -193,6 +201,14 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
                 Forgot Password?
               </button>
             </div>
+
+            {/* Safe User-Friendly Error Alert */}
+            {errorMessage && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             {/* Primary Action Button: LOGIN (Hover Glow & Click Ripple) */}
             <motion.button

@@ -83,11 +83,15 @@ export class AdminAuthService {
       }
 
       const res = await signInWithEmailAndPassword(auth, email, password);
+
+      // Step 3: Immediately mark current in-memory session as authenticated so App.tsx auth listener does not reject the session
+      this.isSessionAuthenticated = true;
+
       const authCheck = await this.verifyAdminAuthorization(res.user);
 
       if (!authCheck.isAuthorized || !authCheck.profile) {
-        await signOut(auth);
         this.isSessionAuthenticated = false;
+        await signOut(auth);
         return {
           success: false,
           error: 'Access Denied: Your account is authenticated but does not possess active administrative privileges.'
@@ -97,7 +101,7 @@ export class AdminAuthService {
       // Register or verify device session
       try {
         const { sessionRecord, isMaster } = await DeviceSessionService.registerCurrentSession(authCheck.profile);
-        
+
         const isMasterOwner = isMaster || authCheck.profile.uid === MASTER_OWNER_UID || authCheck.profile.email.toLowerCase() === MASTER_OWNER_EMAIL.toLowerCase() || authCheck.profile.role === 'OWNER';
         const displayName = isMasterOwner ? 'Parvish Kan' : (authCheck.profile.email.split('@')[0]);
 
@@ -115,24 +119,33 @@ export class AdminAuthService {
           }
         );
       } catch (sessionErr: any) {
-        await signOut(auth);
         this.isSessionAuthenticated = false;
+        await signOut(auth);
         return {
           success: false,
           error: sessionErr?.message || 'Access Denied: Session revoked or device blocked.'
         };
       }
 
-      // Mark session as actively authenticated in this page session
-      this.isSessionAuthenticated = true;
-
       return { success: true, user: res.user, profile: authCheck.profile };
     } catch (err: any) {
       this.isSessionAuthenticated = false;
-      console.warn('Firebase Auth failure for Admin console:', err?.message || err);
+      console.warn('Firebase Auth failure for Admin console:', err?.code || 'auth-error');
+
+      const errorCode = err?.code || '';
+      let userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
+
+      if (errorCode === 'auth/too-many-requests') {
+        userFriendlyError = 'Too many failed login attempts. Please wait a few moments and try again.';
+      } else if (errorCode === 'auth/network-request-failed') {
+        userFriendlyError = 'Network connection error. Please verify your internet connection and try again.';
+      } else if (errorCode === 'auth/user-disabled') {
+        userFriendlyError = 'This administrator account has been disabled. Please contact the system owner.';
+      }
+
       return {
         success: false,
-        error: err?.message || 'Authentication failed. Please check your admin credentials.'
+        error: userFriendlyError
       };
     }
   }
