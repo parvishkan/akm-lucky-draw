@@ -147,8 +147,11 @@ export class DeviceSessionService {
       if (snap.exists()) {
         existingData = snap.data();
       }
-    } catch (err) {
-      console.warn('Session lookup notice:', err);
+    } catch (err: any) {
+      console.warn('Session lookup notice:', err?.code || err);
+      if (err?.code === 'permission-denied') {
+        throw new Error('Access Denied: Security rules rejected session lookup.');
+      }
     }
 
     // If an existing staff session was revoked, do NOT auto-unrevoke!
@@ -173,8 +176,9 @@ export class DeviceSessionService {
 
     try {
       await setDoc(docRef, record, { merge: true });
-    } catch (err) {
-      console.warn('Could not register session in Firestore (offline/rules):', err);
+    } catch (err: any) {
+      console.error('[SECURITY] Failed to register session in Firestore:', err?.code || err);
+      throw new Error(`Access Denied: Could not register device session (${err?.code || 'permission-denied'}).`);
     }
 
     return { sessionRecord: record, isMaster };
@@ -188,8 +192,10 @@ export class DeviceSessionService {
       const deviceId = this.getOrCreateDeviceId();
       const docRef = doc(db, collections.ADMIN_SESSIONS, `${uid}_${deviceId}`);
       await setDoc(docRef, { lastActiveAt: serverTimestamp() }, { merge: true });
-    } catch {
-      // Non-blocking heartbeat failure
+    } catch (err: any) {
+      if (err?.code === 'permission-denied') {
+        console.warn('[SECURITY] Heartbeat rejected by Firestore security rules (session may be revoked):', err?.message);
+      }
     }
   }
 
@@ -198,7 +204,8 @@ export class DeviceSessionService {
    */
   static listenToCurrentSession(
     uid: string,
-    onRevoked: () => void
+    onRevoked: () => void,
+    onError?: (err: any) => void
   ): () => void {
     const deviceId = this.getOrCreateDeviceId();
     const docRef = doc(db, collections.ADMIN_SESSIONS, `${uid}_${deviceId}`);
@@ -211,7 +218,10 @@ export class DeviceSessionService {
         }
       }
     }, (err) => {
-      console.warn('Session listener warning:', err);
+      console.error('[SECURITY] Session listener error:', err?.code || err?.message || err);
+      if (onError) {
+        onError(err);
+      }
     });
   }
 

@@ -30,6 +30,10 @@ export const App: React.FC = () => {
       // Security Hardening: On page refresh / initial load, reject silent restoration of cached sessions!
       // Admin MUST actively authenticate in this browser session via Email + Password.
       if (user && !AdminAuthService.isCurrentSessionAuthenticated()) {
+        // If an interactive login is actively executing, do NOT purge! Let login() complete its verification.
+        if (AdminAuthService.isAuthenticating()) {
+          return;
+        }
         await AdminAuthService.purgePersistedAuth();
         setAuthUser(null);
         setIsAuthorizedAdmin(false);
@@ -71,10 +75,20 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!authUser || !isAuthorizedAdmin) return;
 
-    const unsubscribeSession = DeviceSessionService.listenToCurrentSession(authUser.uid, async () => {
-      alert('⚠️ Access Revoked: Your administrative session has been revoked by the Master Owner.');
-      await handleLogout();
-    });
+    const unsubscribeSession = DeviceSessionService.listenToCurrentSession(
+      authUser.uid,
+      async () => {
+        alert('⚠️ Access Revoked: Your administrative session has been revoked by the Master Owner.');
+        await handleLogout();
+      },
+      async (err) => {
+        if (err?.code === 'permission-denied') {
+          console.error('[SECURITY] Remote session monitoring rejected by security rules. Session terminated.');
+          alert('⚠️ Security Notice: Real-time session monitoring failed or was denied. Terminating session.');
+          await handleLogout();
+        }
+      }
+    );
 
     const heartbeatInterval = setInterval(() => {
       DeviceSessionService.sendHeartbeat(authUser.uid);

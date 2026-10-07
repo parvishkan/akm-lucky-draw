@@ -24,12 +24,20 @@ export class AdminAuthService {
    * Resets to false upon page reload / refresh to mandate credentials re-entry.
    */
   private static isSessionAuthenticated = false;
+  private static isLoginInProgress = false;
 
   /**
    * Returns whether the admin was authenticated within this active page lifetime.
    */
   static isCurrentSessionAuthenticated(): boolean {
     return this.isSessionAuthenticated;
+  }
+
+  /**
+   * Returns whether an interactive credential login handshake is actively in progress.
+   */
+  static isAuthenticating(): boolean {
+    return this.isLoginInProgress;
   }
 
   /**
@@ -74,6 +82,7 @@ export class AdminAuthService {
    * Performs Firebase Auth login followed by strict Admin Authorization and Device Registration check.
    */
   static async login(email: string, password: string): Promise<{ success: boolean; user?: User; profile?: AdminProfile; error?: string }> {
+    this.isLoginInProgress = true;
     try {
       // Enforce in-memory session persistence so credentials and tokens are strictly non-persisted on refresh
       try {
@@ -147,6 +156,8 @@ export class AdminAuthService {
         success: false,
         error: userFriendlyError
       };
+    } finally {
+      this.isLoginInProgress = false;
     }
   }
 
