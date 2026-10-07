@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Mail, ShieldCheck, ArrowLeft, KeyRound, Sparkles, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, ArrowLeft, KeyRound, Sparkles, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { APP_CONFIG } from '../constants/appConfig';
 import { AdminAuthService, AdminProfile } from '../services/adminAuthService';
-import { User } from 'firebase/auth';
+import { auth } from '../services/firebase';
+import { User, sendPasswordResetEmail } from 'firebase/auth';
 
 interface AdminLoginProps {
   onLoginSuccess: (user?: User, profile?: AdminProfile) => void;
@@ -24,7 +25,9 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
@@ -34,6 +37,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
     if (!username.trim() || !password.trim()) return;
 
     setErrorMessage(null);
+    setSuccessMessage(null);
     setIsSubmitting(true);
     const res = await AdminAuthService.login(username.trim(), password.trim());
     setIsSubmitting(false);
@@ -55,6 +59,30 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
       onLoginSuccess(res.user, res.profile);
     } else {
       setErrorMessage(res.error || 'Invalid email or password. Please check your credentials and try again.');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (isResettingPassword || isSubmitting) return;
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const email = username.trim();
+    if (!email) {
+      setErrorMessage('Please enter your admin email address first.');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMessage('Password reset email sent. Please check your inbox and Spam folder.');
+    } catch (err: any) {
+      console.warn('Password reset request notice:', err?.code || 'auth-error');
+      setErrorMessage('Unable to send password reset email. Please check the email address and try again.');
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -143,6 +171,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
                   onChange={(e) => {
                     setUsername(e.target.value);
                     if (errorMessage) setErrorMessage(null);
+                    if (successMessage) setSuccessMessage(null);
                   }}
                   placeholder="Enter admin email"
                   required
@@ -166,6 +195,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (errorMessage) setErrorMessage(null);
+                    if (successMessage) setSuccessMessage(null);
                   }}
                   placeholder="••••••••••••"
                   required
@@ -195,10 +225,11 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
 
               <button
                 type="button"
-                onClick={() => alert('Please contact Anu Krishna Mall IT Manager to reset admin credentials.')}
-                className="text-[#D4AF37] hover:text-[#FFD700] hover:underline transition-colors"
+                onClick={handleForgotPassword}
+                disabled={isResettingPassword || isSubmitting}
+                className="text-[#D4AF37] hover:text-[#FFD700] hover:underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                Forgot Password?
+                {isResettingPassword ? 'Sending...' : 'Forgot Password?'}
               </button>
             </div>
 
@@ -207,6 +238,14 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBackTo
               <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5">
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                 <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Safe User-Friendly Success Alert */}
+            {successMessage && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{successMessage}</span>
               </div>
             )}
 
