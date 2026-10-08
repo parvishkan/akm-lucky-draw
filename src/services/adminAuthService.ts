@@ -57,22 +57,64 @@ export class AdminAuthService {
   }
 
   /**
+   * Classifies whether a Firestore error is transient and related to the
+   * post-authentication token propagation window or network transport.
+   */
+  private static isTransientAuthSyncError(err: any): boolean {
+    if (!err) return false;
+    const code = err?.code || '';
+    return (
+      code === 'permission-denied' ||
+      code === 'unavailable' ||
+      code === 'deadline-exceeded'
+    );
+  }
+
+  /**
    * Verifies if an authenticated user's UID exists in the /admins/{uid} collection
    * and has an ACTIVE status.
+   * Includes bounded retry (max 2 retries, 200ms delay) strictly for transient
+   * Firestore auth token propagation delay immediately following login.
+   * Permanent authorization failures (missing doc, inactive status, non-transient errors)
+   * fail closed immediately without unnecessary retries.
    */
   static async verifyAdminAuthorization(user: User): Promise<{ isAuthorized: boolean; profile?: AdminProfile }> {
-    try {
-      const docRef = doc(db, collections.ADMINS, user.uid);
-      const snap = await getDoc(docRef);
+    const maxRetries = 2;
+    const retryDelayMs = 200;
 
-      if (snap.exists()) {
-        const data = snap.data() as AdminProfile;
-        if (data.status === 'ACTIVE') {
-          return { isAuthorized: true, profile: data };
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const docRef = doc(db, collections.ADMINS, user.uid);
+        const snap = await getDoc(docRef);
+
+        if (snap.exists()) {
+          const data = snap.data() as AdminProfile;
+          if (data.status === 'ACTIVE') {
+            return { isAuthorized: true, profile: data };
+          }
+          // Permanent decision: document exists but account is INACTIVE. Fail closed immediately.
+          return { isAuthorized: false };
+        }
+
+        // Permanent decision: document does not exist in /admins. Fail closed immediately.
+        return { isAuthorized: false };
+      } catch (err: any) {
+        console.warn(`Admin authorization doc lookup notice (attempt ${attempt + 1}/${maxRetries + 1}):`, err?.code || 'error');
+
+        // Only retry if the error is explicitly classified as a transient auth/token sync condition
+        if (!this.isTransientAuthSyncError(err) || attempt >= maxRetries) {
+          return { isAuthorized: false };
         }
       }
-    } catch (err) {
-      console.warn('Admin authorization doc lookup warning:', err);
+
+      if (attempt < maxRetries) {
+        try {
+          await user.getIdToken();
+        } catch {
+          // ignore token refresh notice during retry
+        }
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
     }
 
     return { isAuthorized: false };
@@ -92,6 +134,19 @@ export class AdminAuthService {
       }
 
       const res = await signInWithEmailAndPassword(auth, email, password);
+
+      // Force fresh ID token synchronization to ensure Firestore client credential provider binds the new token
+      try {
+        await res.user.getIdToken(true);
+      } catch (tokenErr) {
+        console.warn('ID token synchronization failure');
+        this.isSessionAuthenticated = false;
+        await signOut(auth);
+        return {
+          success: false,
+          error: 'Authentication failed: Unable to synchronize security credentials. Please try again.'
+        };
+      }
 
       // Step 3: Immediately mark current in-memory session as authenticated so App.tsx auth listener does not reject the session
       this.isSessionAuthenticated = true;
